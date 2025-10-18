@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: README
+    url: https://github.com/Aedial/Spellcaster-Archives#readme
+    about: Check the README for usage notes and component callbacks before filing an issue.
+  - name: Development Guide
+    url: https://github.com/Aedial/Spellcaster-Archives/blob/main/DEVELOPMENT.md
+    about: Build instructions, dependency setup, and extending drivers.
+

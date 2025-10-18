@@ -1,0 +1,15 @@
+[
+  {
+    "modid": "spellarchives",
+    "name": "Spellcaster's Archives",
+    "description": "A bottomless archive for spell books.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "authorList": ["You"],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+]

@@ -1,0 +1,53 @@
+buildscript {
+    repositories {
+        jcenter()
+        maven { url = "https://maven.minecraftforge.net" }
+        maven { url = "https://files.minecraftforge.net/maven" } // legacy fallback
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle.forge'
+
+version = "0.1.0"
+group = "com.spellarchives"
+archivesBaseName = "spellarchives"
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+minecraft {
+    version = "1.12.2-14.23.5.2847"
+    runDir = "run"
+    mappings = "stable_39"
+}
+
+repositories {
+    mavenCentral()
+    jcenter()
+    maven { url 'https://maven.minecraftforge.net' }
+    maven { url 'https://maven.blamejared.com' }
+    maven { url 'https://cursemaven.com' }
+}
+
+configurations {
+    deobfCompile
+}
+
+dependencies {
+    // Electroblob's Wizardry for 1.12.2 via CurseMaven (Mod File from Aug 31, 2025)
+    deobfCompile 'curse.maven:electroblobs-wizardry-265642:6950392'
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "mcversion", project.minecraft.version
+
+    from(sourceSets.main.resources.srcDirs) {
+        include 'mcmod.info'
+        expand 'version': project.version, 'mcversion': project.minecraft.version
+    }
+}
