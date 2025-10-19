@@ -3,6 +3,7 @@ package com.spellarchives.command;
 import com.spellarchives.Log;
 import com.spellarchives.tile.TileSpellArchive;
 
+import electroblob.wizardry.item.ItemSpellBook;
 import electroblob.wizardry.spell.Spell;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
@@ -16,7 +17,6 @@ import net.minecraft.world.World;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.math.BlockPos;
 
 import java.util.List;
 import java.util.Collections;
@@ -78,29 +78,24 @@ public class CommandArchives extends CommandBase {
         long totalBooksRequested = 0;
         long totalBooksAdded = 0;
 
-        // Use the global Spell registry; for each Spell, find its metadata id and build the base spell book stack.
-        Item spellBookItem = Item.REGISTRY.getObject(new ResourceLocation("ebwizardry", "spell_book"));
-        if (spellBookItem == null) {
+        // Build a cache of modid -> ItemSpellBook, preferring each mod's own spell book item when available.
+        Map<String, Item> spellBookByMod = buildSpellBookItemIndex();
+        Item defaultBook = spellBookByMod.get("ebwizardry");
+        if (defaultBook == null) {
             Log.chatError(sender, "Wizardry spell book item not found (ebwizardry:spell_book).");
             return;
         }
 
-        // Build a one-time map from Spell to metadata by scanning a reasonable range.
-        Map<Spell, Integer> metaBySpell = new HashMap<>();
-        for (int m = 0; m < 4096; m++) {
-            Spell s = Spell.byMetadata(m);
-            if (s != null) {
-                metaBySpell.putIfAbsent(s, m);
-            } else if (m > 256 && m % 64 == 0 && metaBySpell.size() > 0) {
-                // Heuristic early-out: after some gaps and having found entries, assume sparse end
-                if (m > 1024) break;
-            }
-        }
-
         for (Spell spell : Spell.getAllSpells()) {
             if (spell == null) continue;
-            Integer meta = metaBySpell.get(spell);
-            if (meta == null) continue; // Unknown mapping
+
+            Integer meta = spell.metadata();
+            if (meta == -1) continue; // Not registered
+
+            // Choose the correct spell book item for the spell's owning mod, fallback to ebwizardry's
+            ResourceLocation spellId = spell.getRegistryName();
+            String modid = spellId != null ? getNamespaceSafe(spellId) : "ebwizardry";
+            Item spellBookItem = spellBookByMod.getOrDefault(modid, defaultBook);
 
             ItemStack book = new ItemStack(spellBookItem, 1, meta.intValue());
             totalBooksRequested += count;
@@ -112,6 +107,49 @@ public class CommandArchives extends CommandBase {
         }
 
         Log.chatSuccess(sender, "Filled " + addedTypes + " spell types (" + totalBooksAdded + "/" + totalBooksRequested + ") into the archive.");
+    }
+
+    // Scans the item registry and builds a map from modid -> ItemSpellBook instance for that mod.
+    // Prefers items whose path contains "spell_book" when multiple exist.
+    private Map<String, Item> buildSpellBookItemIndex() {
+        Map<String, Item> map = new HashMap<>();
+
+        // First pass: record any ItemSpellBook per modid
+        for (ResourceLocation rl : Item.REGISTRY.getKeys()) {
+            Item item = Item.REGISTRY.getObject(rl);
+            if (!(item instanceof ItemSpellBook)) continue;
+
+            String modid = getNamespaceSafe(rl);
+            Item current = map.get(modid);
+
+            // Prefer paths that explicitly contain "spell_book"
+            if (current == null) {
+                map.put(modid, item);
+            } else if (getPathSafe(rl).contains("spell_book")) {
+                map.put(modid, item);
+            }
+        }
+
+        // Ensure default ebwizardry book is present if available
+        Item eb = Item.REGISTRY.getObject(new ResourceLocation("ebwizardry", "spell_book"));
+        if (eb instanceof ItemSpellBook) map.put("ebwizardry", eb);
+
+        return map;
+    }
+
+    // Fallback-safe namespace extraction that works across mappings
+    private static String getNamespaceSafe(ResourceLocation rl) {
+        if (rl == null) return "";
+        String s = rl.toString(); // format: namespace:path
+        int i = s.indexOf(':');
+        return i >= 0 ? s.substring(0, i) : "";
+    }
+
+    private static String getPathSafe(ResourceLocation rl) {
+        if (rl == null) return "";
+        String s = rl.toString();
+        int i = s.indexOf(':');
+        return i >= 0 ? s.substring(i + 1) : s;
     }
 
     @Override

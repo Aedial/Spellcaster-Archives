@@ -35,7 +35,7 @@ A Minecraft 1.12.2 Forge mod that adds a "Spell Archive" block: a bottomless, ca
 
 - Place the Spell Archive block and insert Wizardry spell books (right-click or via automation).
 - Open the GUI to browse shelves grouped by tier; shelves use the element color as spine fill.
-- Hover a spine to see details on the right; click to extract (Shift for 64).
+- Hover a spine to see details on the right; click to extract (Shift for 16).
 - Breaking the block drops an item that carries all stored contents via NBT; placing it restores the inventory.
 
 ### Debug command
