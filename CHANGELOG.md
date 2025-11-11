@@ -8,6 +8,14 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
 ## [0.2.1] - 2025-11-11
+### Added
+- Add crafting recipe for Spellcaster's Archive:
+  - 4x Runestone (Electroblob's Wizardry)
+  - 1x Ruined Spell Book (Electroblob's Wizardry)
+  - 1x Grand Magic Crystal (Electroblob's Wizardry)
+  - 1x Bookshelf (Minecraft)
+  - 2x Wood Planks (any type) (Minecraft)
+
 ### Fixed
 - Fix changelog script (script name) and bump version that was missed in last release.
 - Fix NPE when breaking the Spell Archive next to AE2 Storage Bus (in some versions of AE2-UEL).
@@ -18,7 +26,7 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
   - Slot still matters to some extent for extraction and reporting (stable order).
   - Remove stack limit on lookup and extraction.
   - Remove key deletion on slot exhaustion, to keep the record consistent across ticks.
-- Optimize slot-aware logic (extraction, lookup) to avoid O(n^2) behavior.
+- Optimize slot-aware logic (extraction, lookup) to avoid O(n) behavior.
 
 ## [0.2.0] - 2025-11-11
 ### Added

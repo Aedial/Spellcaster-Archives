@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "group": "spellarchive:archive",
+  "pattern": [
+    "RSR",
+    "WBW",
+    "RCR"
+  ],
+  "key": {
+    "C": { "item": "ebwizardry:grand_crystal" },
+    "B": { "item": "minecraft:bookshelf" },
+    "W": { "type": "forge:ore_dict", "ore": "plankWood" },
+    "S": { "item": "ebwizardry:ruined_spell_book" },
+    "R": [
+      { "item": "ebwizardry:runestone", "data": 1 },
+      { "item": "ebwizardry:runestone", "data": 2 },
+      { "item": "ebwizardry:runestone", "data": 3 },
+      { "item": "ebwizardry:runestone", "data": 4 },
+      { "item": "ebwizardry:runestone", "data": 5 },
+      { "item": "ebwizardry:runestone", "data": 6 },
+      { "item": "ebwizardry:runestone", "data": 7 }
+    ]
+  },
+  "result": { "item": "spellarchives:spell_archive" }
+}
