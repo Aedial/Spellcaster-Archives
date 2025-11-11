@@ -6,10 +6,12 @@
     "version": "${version}",
     "mcversion": "${mcversion}",
     "url": "",
-    "authorList": ["You"],
+    "authorList": ["Aedial"],
     "credits": "",
     "logoFile": "",
     "screenshots": [],
-    "dependencies": []
+    "dependencies": [
+      "after:enchlib"
+    ]
   }
 ]

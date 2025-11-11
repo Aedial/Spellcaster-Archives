@@ -1,48 +1,51 @@
 package com.spellarchives.gui;
 
-import com.spellarchives.Log;
-import com.spellarchives.container.ContainerSpellArchive;
-import com.spellarchives.gui.GuiStyle;
-import com.spellarchives.network.MessageExtractBook;
-import com.spellarchives.network.NetworkHandler;
-import com.spellarchives.tile.TileSpellArchive;
-
-import electroblob.wizardry.Wizardry;
-import electroblob.wizardry.constants.Element;
-import electroblob.wizardry.data.SpellGlyphData;
-import electroblob.wizardry.data.WizardData;
-import electroblob.wizardry.spell.Spell;
-import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.inventory.GuiContainer;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.client.resources.IResource;
-import net.minecraft.client.resources.IResourceManager;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.World;
-import net.minecraft.util.text.TextFormatting;
-import net.minecraft.util.text.Style;
-
-import java.io.IOException;
 import java.awt.image.BufferedImage;
-import javax.imageio.ImageIO;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashSet;
-import java.util.stream.Collectors;
 import java.util.function.IntFunction;
 import java.util.function.IntUnaryOperator;
+import java.util.stream.Collectors;
+import javax.imageio.ImageIO;
 
-import javax.annotation.Resource;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.RenderHelper;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.client.resources.I18n;
+import net.minecraft.client.resources.IResource;
+import net.minecraft.client.resources.IResourceManager;
+import net.minecraft.client.util.ITooltipFlag;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.text.Style;
+import net.minecraft.util.text.TextFormatting;
+import net.minecraft.world.World;
+
+import com.spellarchives.container.ContainerSpellArchive;
+import com.spellarchives.gui.GuiStyle;
+import com.spellarchives.network.MessageExtractBook;
+import com.spellarchives.network.NetworkHandler;
+import com.spellarchives.render.DynamicTextureFactory;
+import com.spellarchives.tile.TileSpellArchive;
+
+import electroblob.wizardry.Wizardry;
+import electroblob.wizardry.client.ClientProxy;
+import electroblob.wizardry.client.MixedFontRenderer;
+import electroblob.wizardry.constants.Element;
+import electroblob.wizardry.data.SpellGlyphData;
+import electroblob.wizardry.data.WizardData;
+import electroblob.wizardry.spell.Spell;
 
 
 public class GuiSpellArchive extends GuiContainer {
@@ -61,10 +64,11 @@ public class GuiSpellArchive extends GuiContainer {
     // Cached layout pieces, recalculated each frame
     private int leftPanelX, leftPanelY, leftPanelW, leftPanelH;
     private int rightPanelX, rightPanelY, rightPanelW, rightPanelH;
-    private int gridCols, gridRows, cellW = GuiStyle.CELL_W, cellH = GuiStyle.CELL_H, rowGap = GuiStyle.ROW_GAP;
+    private int gridCols, gridRows;
+    private int cellW = GuiStyle.CELL_W, cellH = GuiStyle.CELL_H, rowGap = GuiStyle.ROW_GAP;
     
     // Helper value objects for layout computations
-    private static class GridGeometry {
+    public static class GridGeometry {
         final int gridX, gridY, gridW, gridH, headerH;
 
         GridGeometry(int gridX, int gridY, int gridW, int gridH, int headerH) {
@@ -76,7 +80,7 @@ public class GuiSpellArchive extends GuiContainer {
         }
     }
 
-    private static class GrooveRow {
+    public static class GrooveRow {
         int rowIndex; // index into displayRows
         int tier;
         int baseY; // y position of groove top
@@ -90,7 +94,7 @@ public class GuiSpellArchive extends GuiContainer {
         }   
     }
 
-    private static class DisplayRows {
+    public static class DisplayRows {
         final List<List<BookEntry>> rows;      // wrapped rows of books
         final List<Integer> rowTiers;          // tier per row, aligned with rows
 
@@ -100,7 +104,7 @@ public class GuiSpellArchive extends GuiContainer {
         }
     }
 
-    private static class PageInfo {
+    public static class PageInfo {
         final List<GrooveRow> layout;  // groove rows to render this page
         final boolean hasNext;         // whether more rows exist beyond this page
 
@@ -110,7 +114,7 @@ public class GuiSpellArchive extends GuiContainer {
         }
     }
 
-    private static class BookEntry {
+    public static class BookEntry {
         final ItemStack stack;
         final int count;
         final int tier;     // numeric sort key for tier
@@ -131,24 +135,11 @@ public class GuiSpellArchive extends GuiContainer {
     private List<BookEntry> entries = new ArrayList<>();
     private Map<Integer, List<BookEntry>> rowsByTier = new LinkedHashMap<>();
     private List<Integer> tierOrder = new ArrayList<>();
-    private BookEntry hoveredEntryCached = null;
     private int lastChangeRev = -1;
 
-    // Cache for generated spine textures: key -> resource location
-    private final Map<String, ResourceLocation> spineTextureCache = new LinkedHashMap<>();
+    // (Spine and background dynamic textures are produced and cached by DynamicTextureFactory)
 
-    // Left panel caches (avoid recalculations unless keys/layout/page change)
-    private Set<String> lastKeys = new HashSet<>();
-    private DisplayRows cachedDisplayRows = null;
-    private PageInfo cachedPageInfo = null;
-    private GridGeometry cachedGG = null;
-    private int cachedGridColsForDisplay = -1;
-    private int cachedPageForLayout = -1;
-
-    // Right panel caches (avoid recomputation unless hovered/count change)
-    private String lastHoveredKey = null;
-    private int lastHoveredCount = -1;
-    private SpellPresentation cachedPresentation = null;
+    private final GuiCacheManager cacheManager = new GuiCacheManager();
 
     public GuiSpellArchive(ContainerSpellArchive container, TileSpellArchive tile, EntityPlayer player) {
         super(container);
@@ -160,7 +151,7 @@ public class GuiSpellArchive extends GuiContainer {
 
     @Override
     public void initGui() {
-        // Dynamic sizing: 50% width, 75% height of the screen
+        // Dynamic sizing
         this.xSize = Math.max(GuiStyle.MIN_WIDTH, (int) (this.width * GuiStyle.WIDTH_RATIO));
         this.ySize = Math.max(GuiStyle.MIN_HEIGHT, (int) (this.height * GuiStyle.HEIGHT_RATIO));
 
@@ -168,8 +159,8 @@ public class GuiSpellArchive extends GuiContainer {
 
         // Buttons with vanilla background
         this.buttonList.clear();
-        this.prevButton = new GuiButton(1, 0, 0, 20, 20, "<");
-        this.nextButton = new GuiButton(2, 0, 0, 20, 20, ">");
+        this.prevButton = new GuiButton(1, 0, 0, 20, 20, I18n.format("gui.spellarchives.prev"));
+        this.nextButton = new GuiButton(2, 0, 0, 20, 20, I18n.format("gui.spellarchives.next"));
         this.buttonList.add(prevButton);
         this.buttonList.add(nextButton);
 
@@ -214,6 +205,14 @@ public class GuiSpellArchive extends GuiContainer {
     protected void drawGuiContainerBackgroundLayer(float partialTicks, int mouseX, int mouseY) {
         GlStateManager.color(1f, 1f, 1f, 1f);
 
+        // Darken the outside world behind the GUI according to configured factor
+        float darken = GuiStyle.SCREEN_DARKEN_FACTOR;
+        if (darken > 0f) {
+            int alpha = Math.max(0, Math.min(255, (int)(darken * 255f)));
+            // drawRect uses ARGB int; full-screen overlay
+            drawRect(0, 0, this.mc.displayWidth, this.mc.displayHeight, (alpha << 24));
+        }
+
         // Keep entries up to date while GUI is open
         int rev = tile.getChangeCounterPublic();
         boolean tileChanged = (rev != lastChangeRev);
@@ -223,39 +222,51 @@ public class GuiSpellArchive extends GuiContainer {
         renderBackgroundPanels();
         GridGeometry gg = computeGridGeometry();
 
+        // ensure caches are valid for current style revision
+        cacheManager.checkStyleRevision(GuiStyle.CONFIG_REVISION);
+
         // 2) Data rows and page layout (only recompute if keys/layout/page changed)
+        GuiSpellArchive.GridGeometry cachedGG = cacheManager.getCachedGG();
         boolean layoutChanged = (cachedGG == null) || gg.gridX != cachedGG.gridX || gg.gridY != cachedGG.gridY || gg.gridW != cachedGG.gridW || gg.gridH != cachedGG.gridH || gg.headerH != cachedGG.headerH;
-        boolean colsChanged = (cachedGridColsForDisplay != gridCols);
+        boolean colsChanged = cacheManager.haveColsChanged(gridCols);
 
         boolean keysChanged = false;
         if (tileChanged) {
             Set<String> currentKeys = getSnapshotKeys();
-            keysChanged = !currentKeys.equals(lastKeys);
-            if (keysChanged) {
-                rebuildEntries();
-                lastKeys = currentKeys;
-            }
+            if (cacheManager.haveKeysChanged(currentKeys)) rebuildEntries();
+    
             lastChangeRev = rev;
         }
 
-        if (cachedDisplayRows == null || keysChanged || colsChanged) {
-            cachedDisplayRows = buildDisplayRows();
-            cachedGridColsForDisplay = gridCols;
-            cachedPageInfo = null; // dependent
-        }
+        // Build or obtain display rows (cache manager will decide if rebuild is needed)
+        DisplayRows displayRows = cacheManager.getOrBuildDisplayRows(getSnapshotKeys(), rowsByTier, gridCols);
 
-        if (cachedPageInfo == null || layoutChanged || keysChanged || colsChanged || cachedPageForLayout != page) {
-            cachedPageInfo = buildPageInfo(cachedDisplayRows, gg);
-            cachedPageForLayout = page;
-            cachedGG = gg;
-        }
+        // Build or obtain page info
+        PageInfo pageInfo = cacheManager.getOrBuildPageInfo(displayRows, gg.gridX, gg.gridY, gg.gridW, gg.gridH, gg.headerH, page, cellH, rowGap, gridRows);
+
+        cacheManager.setCachedGG(gg);
 
         // 3) Pagination widgets
-        placePaginationButtons(cachedPageInfo.hasNext);
+        placePaginationButtons(pageInfo.hasNext);
 
         // 4) Render page and details
-        BookEntry hovered = renderPage(cachedDisplayRows, cachedPageInfo, gg, mouseX, mouseY);
-        hoveredEntryCached = hovered;
+        BookEntry hovered = renderPage(displayRows, pageInfo, gg, mouseX, mouseY);
+
+        // If hovered entry changed since last frame, clear cached presentation so the
+        // right panel rebuilds immediately rather than reusing stale data.
+        BookEntry prevHovered = cacheManager.getHoveredEntry();
+        boolean hoveredChanged;
+        if (prevHovered == null) hoveredChanged = (hovered != null);
+        else if (hovered == null) hoveredChanged = true;
+        else {
+            String prevKey = tile.keyOfPublic(prevHovered.stack);
+            String newKey = tile.keyOfPublic(hovered.stack);
+            hoveredChanged = !prevKey.equals(newKey);
+        }
+
+        if (hoveredChanged) cacheManager.clearCachedPresentation();
+
+        cacheManager.setHoveredEntry(hovered);
         renderRightPanel(hovered);
     }
 
@@ -289,8 +300,25 @@ public class GuiSpellArchive extends GuiContainer {
         int totalW = xSize;
         int totalH = ySize;
 
-        drawRoundedPanel(totalX, totalY, totalW, totalH, GuiStyle.PANEL_RADIUS, GuiStyle.BACKGROUND_FILL, GuiStyle.BACKGROUND_BORDER);
-        drawRoundedPanel(rightPanelX, rightPanelY, rightPanelW, rightPanelH, GuiStyle.RIGHT_PANEL_RADIUS, GuiStyle.RIGHT_PANEL_FILL, GuiStyle.RIGHT_PANEL_BORDER);
+        if (GuiStyle.isPanelThemingEnabled()) {
+            // Use centralized factory to obtain a cached panel background texture
+            ResourceLocation bg = DynamicTextureFactory.getOrCreatePanelBg(Math.max(1, totalW), Math.max(1, totalH));
+            if (bg != null) {
+                this.mc.getTextureManager().bindTexture(bg);
+                GlStateManager.color(1f, 1f, 1f, 1f);
+                drawTexturedModalRect(totalX, totalY, 0, 0, totalW, totalH);
+            }
+
+            // soft inner shadow on top edge
+            int shadowCol = (0x40 << 24) | (GuiStyle.GROOVE_SH & 0x00FFFFFF);
+            drawRect(totalX, totalY, totalX + totalW, totalY + 6, shadowCol);
+
+            // right panel uses darker fill
+            drawRoundedPanel(rightPanelX, rightPanelY, rightPanelW, rightPanelH, GuiStyle.RIGHT_PANEL_RADIUS, GuiStyle.RIGHT_PANEL_FILL, GuiStyle.RIGHT_PANEL_BORDER);
+        } else {
+            drawRoundedPanel(totalX, totalY, totalW, totalH, GuiStyle.PANEL_RADIUS, GuiStyle.BACKGROUND_FILL, GuiStyle.BACKGROUND_BORDER);
+            drawRoundedPanel(rightPanelX, rightPanelY, rightPanelW, rightPanelH, GuiStyle.RIGHT_PANEL_RADIUS, GuiStyle.RIGHT_PANEL_FILL, GuiStyle.RIGHT_PANEL_BORDER);
+        }
     }
 
     /**
@@ -424,10 +452,10 @@ public class GuiSpellArchive extends GuiContainer {
 
                 if (!slice.isEmpty()) {
                     Spell rep = tile.getSpellPublic(slice.get(0).stack);
-                    tierText = rep != null ? rep.getTier().getDisplayNameWithFormatting() : ("Tier " + gr.tier);
+                    tierText = rep != null ? rep.getTier().getDisplayNameWithFormatting() : (I18n.format("gui.spellarchives.tier_fallback", gr.tier));
                     rarityRGB = slice.get(0).rarityColor;
                 } else {
-                    tierText = ("Tier " + gr.tier);
+                    tierText = I18n.format("gui.spellarchives.tier_fallback", gr.tier);
                 }
 
                 String tierPlain = TextFormatting.getTextWithoutFormattingCodes(tierText);
@@ -465,11 +493,9 @@ public class GuiSpellArchive extends GuiContainer {
                 int spineH = cellH - (GuiStyle.SPINE_TOP_BORDER + GuiStyle.SPINE_BOTTOM_BORDER); // leave top/bottom borders inside groove
                 if (spineW > 0 && spineH > 0) {
                     ResourceLocation eIcon = (repElem != null) ? repElem.getIcon() : null;
-                    ResourceLocation spineTex = GuiStyle.SPINE_EMBED_ICON
-                            ? getOrCreateSpineTexture(elemColor & 0xFFFFFF, spineW, spineH, eIcon, GuiStyle.SPINE_ICON_SIZE)
-                            : getOrCreateSpineTexture(elemColor & 0xFFFFFF, spineW, spineH, null, 0);
+                    ResourceLocation spineTex = DynamicTextureFactory.getOrCreateSpineTexture(elemColor & 0xFFFFFF, spineW, spineH, GuiStyle.SPINE_EMBED_ICON ? eIcon : null, GuiStyle.SPINE_ICON_SIZE);
 
-                            if (spineTex != null) {
+                    if (spineTex != null) {
                         this.mc.getTextureManager().bindTexture(spineTex);
                         GlStateManager.color(1f, 1f, 1f, 1f);
                         // Draw 1:1 without scaling artifacts
@@ -487,6 +513,12 @@ public class GuiSpellArchive extends GuiContainer {
                         int rx = lx + spineW;
                         int by = ty + spineH;
                         drawRect(lx, ty, rx, by, 0xFF000000 | elemColor);
+                    }
+
+                    // subtle 1px shadow under the spine for depth if theme enabled
+                    if (GuiStyle.isPanelThemingEnabled()) {
+                        int shadow = (0x22 << 24) | (GuiStyle.GROOVE_SH & 0x00FFFFFF);
+                        drawRect(x + GuiStyle.SPINE_LEFT_BORDER, y + GuiStyle.SPINE_TOP_BORDER + spineH, x + GuiStyle.SPINE_LEFT_BORDER + spineW, y + GuiStyle.SPINE_TOP_BORDER + spineH + 1, shadow);
                     }
                 }
 
@@ -528,29 +560,21 @@ public class GuiSpellArchive extends GuiContainer {
         int rightY = rightPanelY + GuiStyle.RIGHT_PANEL_INNER_MARGIN;
 
         if (hovered == null) {
-            lastHoveredKey = null;
-            lastHoveredCount = -1;
-            cachedPresentation = null;
+            cacheManager.clearCachedPresentation();
             return;
         }
 
         String key = tile.keyOfPublic(hovered.stack);
-        // Use live count from snapshot so right panel updates even if left panel keys didn't change
         Integer live = tile.getSnapshot().get(key);
         int liveCount = live == null ? 0 : live.intValue();
 
-        boolean hoverChanged = (lastHoveredKey == null || !lastHoveredKey.equals(key));
-        boolean countChanged = (lastHoveredCount != liveCount);
-
-        if (cachedPresentation == null || hoverChanged || countChanged) {
-            cachedPresentation = buildSpellPresentation(hovered, liveCount);
-            lastHoveredKey = key;
-            lastHoveredCount = liveCount;
+        GuiSpellArchive.SpellPresentation p = cacheManager.getCachedPresentation(key, liveCount);
+        if (p == null) {
+            p = buildSpellPresentation(hovered, liveCount);
+            cacheManager.putCachedPresentation(key, p);
         }
 
-        if (cachedPresentation != null) {
-            drawBookInfoFromPresentation(cachedPresentation, rightX, rightY, 0xFFFFFF);
-        }
+        if (p != null) drawBookInfoFromPresentation(p, rightX, rightY, 0xFFFFFF);
     }
 
     /**
@@ -595,7 +619,7 @@ public class GuiSpellArchive extends GuiContainer {
     }
 
     // Presentation data for a spell/book entry
-    private static class SpellPresentation {
+    public static class SpellPresentation {
         final ItemStack stack;
         final Spell spell;
         final boolean discovered;
@@ -645,9 +669,7 @@ public class GuiSpellArchive extends GuiContainer {
         boolean discovered = (data != null) && data.hasSpellBeenDiscovered(spell);
 
         // Treat all spells as discovered if player is in creative mode
-        if (player != null && player.capabilities != null && player.capabilities.isCreativeMode) {
-            discovered = true;
-        }
+        if (player != null && player.capabilities != null && player.capabilities.isCreativeMode) discovered = true;
 
         String headerName;
         ResourceLocation spellIcon = null;
@@ -691,13 +713,16 @@ public class GuiSpellArchive extends GuiContainer {
         int textStartX = x + GuiStyle.RIGHT_TITLE_TEXT_GAP;
         int rightContentRight = rightPanelX + rightPanelW - GuiStyle.RIGHT_PANEL_INNER_MARGIN;
         int maxHeaderW = Math.max(0, rightContentRight - textStartX);
-        String headerFitted = countStr + trimToWidth(p.headerName, Math.max(0, maxHeaderW - fontRenderer.getStringWidth(countStr) - 2));
+
+        // Use mixed font renderer for undiscovered spells to show glyphs
+        FontRenderer fontRendererInstance = p.discovered ? fontRenderer : ClientProxy.mixedFontRenderer;
+        String headerFitted = countStr + trimToWidth(p.headerName, Math.max(0, maxHeaderW - fontRendererInstance.getStringWidth(countStr) - 2));
 
         RenderHelper.enableGUIStandardItemLighting();
         itemRender.renderItemAndEffectIntoGUI(p.stack, x, y);
         RenderHelper.disableStandardItemLighting();
 
-        fontRenderer.drawString(headerFitted, textStartX + 2, y + 4, color);
+        fontRendererInstance.drawString(headerFitted, textStartX + 2, y + 4, color);
     }
 
     /**
@@ -729,11 +754,17 @@ public class GuiSpellArchive extends GuiContainer {
      * @return A human-readable string representing the time (e.g., "3h", "3.5s", "120t", "instant")
     */
     private String formatTimeTicks(int ticks) {
-        if (ticks <= 0) return "instant";
+    if (ticks <= 0) return I18n.format("gui.spellarchives.instant");
 
         double value = ticks;
         final int[] timeUnits = {20, 60, 60, 24, Integer.MAX_VALUE};
-        final String[] timeUnitLabels = {"t", "s", "m", "h", "d"};
+        final String[] timeUnitLabels = {
+            I18n.format("timeunit.t"),
+            I18n.format("timeunit.s"),
+            I18n.format("timeunit.m"),
+            I18n.format("timeunit.h"),
+            I18n.format("timeunit.d")
+        };
         assert timeUnits.length == timeUnitLabels.length;
 
         int i = 0;
@@ -746,9 +777,7 @@ public class GuiSpellArchive extends GuiContainer {
 
         String unit = timeUnitLabels[i];
         String s = String.format(Locale.ROOT, "%.1f%s", value, unit);
-        if (s.endsWith(".0" + unit)) {
-            s = s.substring(0, s.length() - 3) + unit;
-        }
+        if (s.endsWith(".0" + unit)) s = s.substring(0, s.length() - 3) + unit;
 
         return s;
     }
@@ -761,14 +790,14 @@ public class GuiSpellArchive extends GuiContainer {
      * @return The updated y position after drawing
      */
     private int drawPropertiesLines(SpellPresentation p, int x, int rowY) {
-        String costStr = "Cost: ?";
-        String cooldownStr = "Cooldown: ?";
-        String chargeStr = "Charge: ?";
+        String costStr = I18n.format("gui.spellarchives.cost_unknown");
+        String cooldownStr = I18n.format("gui.spellarchives.cooldown_unknown");
+        String chargeStr = I18n.format("gui.spellarchives.charge_unknown");
 
         if (p.discovered) {
-            costStr = "Cost: " + p.cost + " mana" + (p.isContinuous ? "/s" : "");
-            cooldownStr = "Cooldown: " + formatTimeTicks(p.cooldown);
-            chargeStr = "Charge: " + formatTimeTicks(p.chargeUpTime);
+            costStr = I18n.format("gui.spellarchives.cost_fmt", p.cost, p.isContinuous ? I18n.format("timeunit.s") : "");
+            cooldownStr = I18n.format("gui.spellarchives.cooldown_fmt", formatTimeTicks(p.cooldown));
+            chargeStr = I18n.format("gui.spellarchives.charge_fmt", formatTimeTicks(p.chargeUpTime));
         }
 
         fontRenderer.drawString(costStr, x, rowY, GuiStyle.DETAIL_TEXT);
@@ -793,16 +822,24 @@ public class GuiSpellArchive extends GuiContainer {
     private void drawDescriptionAndIcon(SpellPresentation p, int x, int rowY, int color) {
         String desc = p.description != null ? p.description : "";
         int maxW = rightPanelW - GuiStyle.RIGHT_PANEL_TEXT_SIDE_PAD * 2;
+        int safeMaxW = Math.max(0, maxW);  // maxW may be negative if right panel is very narrow
         boolean showIcon = p.discovered && p.spellIcon != null;
         int contentWidth = rightPanelW - GuiStyle.RIGHT_PANEL_INNER_MARGIN * 2;
         int iconW = showIcon ? contentWidth : 0;
         int iconH = iconW;
         int bottomClamp = rightPanelY + rightPanelH - GuiStyle.RIGHT_BOTTOM_CLAMP_MARGIN - iconH - (showIcon ? 4 : 0);
 
-        for (String line : fontRenderer.listFormattedStringToWidth(desc, maxW)) {
-            if (rowY + GuiStyle.RIGHT_DESC_LINE_HEIGHT > bottomClamp) break;
-            fontRenderer.drawString(line, x, rowY, color);
-            rowY += GuiStyle.RIGHT_DESC_LINE_HEIGHT;
+        if (safeMaxW > 0 && desc.length() > 0) {
+            FontRenderer fontRendererInstance = p.discovered ? fontRenderer : ClientProxy.mixedFontRenderer;
+
+            // Sanitize the description string to ensure the ICU line-break iterator won't crash
+            String safeDesc = sanitizeForBreakIterator(desc);
+
+            for (String line : wrapTextToWidth(fontRendererInstance, safeDesc, safeMaxW)) {
+                if (rowY + GuiStyle.RIGHT_DESC_LINE_HEIGHT > bottomClamp) break;
+                fontRendererInstance.drawString(line, x, rowY, color);
+                rowY += GuiStyle.RIGHT_DESC_LINE_HEIGHT;
+            }
         }
 
         if (showIcon) {
@@ -826,11 +863,12 @@ public class GuiSpellArchive extends GuiContainer {
         super.mouseClicked(mouseX, mouseY, mouseButton);
 
         // Extract on click
-        if (hoveredEntryCached != null) {
+        GuiSpellArchive.BookEntry hovered = cacheManager.getHoveredEntry();
+        if (hovered != null) {
             boolean shift = isShiftKeyDown();
             int amount = shift ? 16 : 1;
             if (this.mc != null && this.mc.player != null) {
-                String key = tile.keyOfPublic(hoveredEntryCached.stack);
+                String key = tile.keyOfPublic(hovered.stack);
                 NetworkHandler.CHANNEL.sendToServer(new MessageExtractBook(tile.getPos(), key, amount));
             }
         }
@@ -860,9 +898,7 @@ public class GuiSpellArchive extends GuiContainer {
         if (fontRenderer.getStringWidth(text) <= maxW) return text;
 
         String s = text;
-        while (s.length() > 0 && fontRenderer.getStringWidth(s + "…") > maxW) {
-            s = s.substring(0, s.length() - 1);
-        }
+        while (s.length() > 0 && fontRenderer.getStringWidth(s + "…") > maxW) s = s.substring(0, s.length() - 1);
 
         return s + "…";
     }
@@ -876,7 +912,12 @@ public class GuiSpellArchive extends GuiContainer {
         if (n < 1000) return String.valueOf(n);
 
         int unitIndex = -1;
-        final String[] units = {"k", "M", "B", "T"};
+        final String[] units = {
+            I18n.format("numunit.k"),
+            I18n.format("numunit.M"),
+            I18n.format("numunit.B"),
+            I18n.format("numunit.T")
+        };
         double value = n;
         while (value >= 1000 && unitIndex + 1 < units.length) { value /= 1000.0; unitIndex++; }
 
@@ -903,6 +944,13 @@ public class GuiSpellArchive extends GuiContainer {
         drawRect(x, y, x + w, y + h, base);
         drawRect(x, y, x + w, y + 1, hl);
         drawRect(x, y + h - 1, x + w, y + h, sh);
+
+        // subtle drop shadow under the groove for depth (1-2px)
+        // use a translucent darker color based on groove shadow
+        int shadowAlpha = 0x30; // low alpha
+        int shadowRgb = darkenColor(sh & 0xFFFFFF, 0.6f);
+        int shadowCol = (shadowAlpha << 24) | (shadowRgb & 0x00FFFFFF);
+        drawRect(x, y + h, x + w, y + h + 2, shadowCol);
     }
 
     /**
@@ -980,180 +1028,6 @@ public class GuiSpellArchive extends GuiContainer {
     }
 
     /**
-     * Creates and caches a spine texture with shading effects based on the base color and dimensions.
-     * Any further requests for the same (color, width, height) will return the cached texture.
-     * @param baseRgb The base RGB color for the spine
-     * @param w The width of the texture
-     * @param h The height of the texture
-     * @param iconRl The ResourceLocation of the element icon to embed, or null for no icon
-     * @param iconSize The size of the embedded icon, if any
-     * @return The ResourceLocation of the spine texture
-     */
-    private ResourceLocation getOrCreateSpineTexture(int baseRgb, int w, int h, ResourceLocation iconRl, int iconSize) {
-        String key = baseRgb + "_" + w + "x" + h + (iconRl != null && GuiStyle.SPINE_EMBED_ICON ? ("|icon=" + iconRl.toString() + "|s=" + iconSize) : "");
-        ResourceLocation cached = spineTextureCache.get(key);
-        if (cached != null) return cached;
-
-        // Generate shaded spine pixels
-        int[] pixels = new int[w * h];
-
-        // Create a deterministic seed from (color, w, h) for asymmetric details
-        int seed = 0x9E3779B9;
-        seed ^= baseRgb * 0x45d9f3b;
-        seed ^= (w << 16) ^ (h << 1);
-        seed = (seed ^ (seed >>> 16)) * 0x7feb352d;
-        seed = (seed ^ (seed >>> 15)) * 0x846ca68b;
-        seed = seed ^ (seed >>> 16);
-
-        // Pseudo-random helpers
-        IntUnaryOperator next = s -> {
-            int z = s + 0x6D2B79F5;
-            z = (z ^ (z >>> 15)) * 0x2C1B3C6D;
-            z = (z ^ (z >>> 12)) * 0x297A2D39;
-
-            return z ^ (z >>> 15);
-        };
-        IntFunction<Float> rf = s -> ((s & 0x7FFFFFFF) / (float)0x7FFFFFFF);
-
-        int s1 = next.applyAsInt(seed);
-        int s2 = next.applyAsInt(s1);
-        int s3 = next.applyAsInt(s2);
-        int s4 = next.applyAsInt(s3);
-        int s5 = next.applyAsInt(s4);
-
-        // Off-center bias for spine curvature
-        float centerBias = 0.5f + (rf.apply(s1) - 0.5f) * 0.18f; // 0.32..0.68
-        centerBias = Math.max(0.3f, Math.min(0.7f, centerBias));
-        float asymTilt = GuiStyle.SPINE_ENABLE_TILT ? (rf.apply(s2) - 0.5f) * 0.12f : 0f; // -0.06..0.06
-        float noiseAmp = GuiStyle.SPINE_ENABLE_NOISE ? GuiStyle.SPINE_NOISE_AMPLITUDE : 0f; // +/- percentage noise
-
-        // Two horizontal bands near the top of available area above icon reserve
-        int iconReserve = GuiStyle.SPINE_ICON_SIZE + GuiStyle.SPINE_ICON_BOTTOM_MARGIN; // reserve for bottom icon area
-        int available = Math.max(0, h - iconReserve);
-        int bandThickness = GuiStyle.SPINE_BAND_THICKNESS;
-        int bandGap = GuiStyle.SPINE_BAND_GAP;
-
-        // Place bands starting at top with a small top space
-        int band1 = available > 0 ? Math.min(available - bandThickness, GuiStyle.SPINE_BAND_TOP_SPACE) : -1;
-        int band2 = band1 >= 0 ? Math.min(available - bandThickness, band1 + bandThickness + bandGap) : -1;
-
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                // Curved vertical shading with biased center and tilt
-                float nx = (x + 0.5f) / w; // 0..1
-                float dist = Math.abs(nx - centerBias) * 2f; // 0 center -> ~1 edges
-                        float side = Math.signum(nx - centerBias);
-                dist *= (1f + asymTilt * side);
-                float shade = GuiStyle.SPINE_ENABLE_CURVATURE
-                    ? (GuiStyle.SPINE_CENTER_BRIGHTEN - GuiStyle.SPINE_EDGE_FACTOR * dist)
-                    : 1.0f;
-                int rgb = darkenColor(baseRgb, shade);
-
-                // Subtle horizontal roll-off towards top/bottom
-                float ny = (y + 0.5f) / h;
-                float edgeY = Math.min(ny, 1f - ny) * 2f; // 0 at edges, 1 at center
-                float vshade = GuiStyle.SPINE_VSHADE_BASE + GuiStyle.SPINE_VSHADE_RANGE * edgeY; // darker near top/bottom
-                rgb = darkenColor(rgb, vshade);
-
-                // Per-pixel noise to break uniformity (deterministic)
-                int ns = s5 + x * 7349 + y * 1931;
-                ns = next.applyAsInt(ns);
-                float n = (rf.apply(ns) - 0.5f) * 2f; // -1..1
-                if (noiseAmp != 0f) rgb = darkenColor(rgb, 1f + n * noiseAmp);
-
-                pixels[y * w + x] = 0xFF000000 | (rgb & 0xFFFFFF);
-            }
-        }
-
-        // Apply horizontal bands post-pass for clean thin lines (darken slightly)
-        if (GuiStyle.SPINE_ENABLE_BANDS && band1 >= 0) {
-            for (int x = 0; x < w; x++) {
-                for (int dy = 0; dy < bandThickness; dy++) { // 2px thickness
-                    int yy = band1 + dy;
-                    if (yy >= 0 && yy < h) {
-                        int idx = yy * w + x;
-                        int rgb = pixels[idx] & 0xFFFFFF;
-                        pixels[idx] = 0xFF000000 | (darkenColor(rgb, GuiStyle.SPINE_BAND1_DARKEN) & 0xFFFFFF);
-                    }
-                }
-            }
-        }
-
-        if (GuiStyle.SPINE_ENABLE_BANDS && band2 >= 0) {
-            for (int x = 0; x < w; x++) {
-                for (int dy = 0; dy < bandThickness; dy++) {
-                    int yy = band2 + dy;
-                    if (yy >= 0 && yy < h) {
-                        int idx = yy * w + x;
-                        int rgb = pixels[idx] & 0xFFFFFF;
-                        pixels[idx] = 0xFF000000 | (darkenColor(rgb, GuiStyle.SPINE_BAND2_DARKEN) & 0xFFFFFF);
-                    }
-                }
-            }
-        }
-
-        // Optionally embed the element icon into the spine texture (bottom-centered)
-        if (GuiStyle.SPINE_EMBED_ICON && iconRl != null && iconSize > 0) {
-            int ix = (w - iconSize) / 2;
-            int iy = (h - iconSize - GuiStyle.SPINE_ICON_BOTTOM_MARGIN) + GuiStyle.SPINE_ICON_Y_OFFSET;
-
-            if (ix >= 0 && iy >= 0 && ix + iconSize <= w && iy + iconSize <= h) {
-                try {
-                    IResourceManager rm = this.mc.getResourceManager();
-                    try (IResource res = rm.getResource(iconRl)) {
-                        BufferedImage img = ImageIO.read(res.getInputStream());
-                        if (img != null) {
-                            int srcW = img.getWidth();
-                            int srcH = img.getHeight();
-                            int[] iconBuf = img.getRGB(0, 0, srcW, srcH, null, 0, srcW);
-
-                            for (int ty = 0; ty < iconSize; ty++) {
-                                int sy = ty * srcH / iconSize;
-                                for (int tx = 0; tx < iconSize; tx++) {
-                                    int sx = tx * srcW / iconSize;
-                                    int argb = iconBuf[sy * srcW + sx];
-                                    int a = (argb >>> 24) & 0xFF;
-                                    if (a == 0) continue;
-
-                                    int dstIndex = (iy + ty) * w + (ix + tx);
-                                    int dst = pixels[dstIndex];
-
-                                    int sr = (argb >>> 16) & 0xFF;
-                                    int sg = (argb >>> 8) & 0xFF;
-                                    int sb = (argb) & 0xFF;
-
-                                    int dr = (dst >>> 16) & 0xFF;
-                                    int dg = (dst >>> 8) & 0xFF;
-                                    int db = (dst) & 0xFF;
-
-                                    float af = a / 255.0f;
-                                    int rr = (int)(sr * af + dr * (1 - af));
-                                    int rg = (int)(sg * af + dg * (1 - af));
-                                    int rb = (int)(sb * af + db * (1 - af));
-
-                                    pixels[dstIndex] = 0xFF000000 | ((rr & 0xFF) << 16) | ((rg & 0xFF) << 8) | (rb & 0xFF);
-                                }
-                            }
-                        }
-                    }
-                } catch (IOException ioe) {
-                    // Ignore icon embedding on IO issues; spine will render without embedded icon
-                }
-            }
-        }
-
-        DynamicTexture dyn = new DynamicTexture(w, h);
-        int[] data = dyn.getTextureData();
-        System.arraycopy(pixels, 0, data, 0, pixels.length);
-
-        dyn.updateDynamicTexture();
-        ResourceLocation rl = this.mc.getTextureManager().getDynamicTextureLocation("sa_spine_" + key, dyn);
-        spineTextureCache.put(key, rl);
-
-        return rl;
-    }
-
-    /**
      * Extracts an RGB color from a Style object, with a fallback if not present.
      * @param style The Style object to extract the color from
      * @param fallbackRgb The fallback RGB color if none is found
@@ -1184,5 +1058,130 @@ public class GuiSpellArchive extends GuiContainer {
             case WHITE: return 0xFFFFFF;
             default: return fallbackRgb;
         }
+    }
+
+    /**
+     * Sanitize a string before passing to ICU/line-break routines.
+     * Removes embedded NULs, replaces unpaired surrogates with the replacement char,
+     * strips most ISO control characters (except newline/tab/CR), and truncates
+     * the string to a reasonable maximum length to avoid internal iterator issues.
+     */
+    private static String sanitizeForBreakIterator(String s) {
+        if (s == null || s.isEmpty()) return "";
+
+        final int MAX_LEN = 4096; // characters
+        StringBuilder sb = new StringBuilder(Math.min(s.length(), MAX_LEN));
+        int len = s.length();
+
+        for (int i = 0; i < len && sb.length() < MAX_LEN; ) {
+            char ch = s.charAt(i);
+
+            // drop embedded NULs
+            if (ch == '\u0000') { i++; continue; }
+
+            if (Character.isHighSurrogate(ch)) {
+                if (i + 1 < len && Character.isLowSurrogate(s.charAt(i + 1))) {
+                    int cp = Character.codePointAt(s, i);
+                    sb.appendCodePoint(cp);
+                    i += 2;
+                } else {
+                    sb.append('\uFFFD');
+                    i++;
+                }
+            } else if (Character.isLowSurrogate(ch)) {
+                // unpaired low surrogate
+                sb.append('\uFFFD');
+                i++;
+            } else {
+                // skip most ISO control characters except newline/carriage return/tab
+                if (ch == '\n' || ch == '\r' || ch == '\t' || !Character.isISOControl(ch)) sb.append(ch);
+                i++;
+            }
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * Simple word-wrap that uses the provided FontRenderer to measure widths.
+     * This avoids ICU/BreakIterator usage which can sometimes fail on malformed input.
+     */
+    private static List<String> wrapTextToWidth(FontRenderer fr, String text, int maxWidth) {
+        List<String> lines = new ArrayList<>();
+        if (text == null || text.isEmpty() || maxWidth <= 0) return lines;
+
+        // Normalize newlines first
+        String[] paragraphs = text.split("\\r?\\n");
+        for (int pi = 0; pi < paragraphs.length; pi++) {
+            String paragraph = paragraphs[pi].trim();
+            if (paragraph.isEmpty()) {
+                lines.add("");
+                continue;
+            }
+
+            StringBuilder cur = new StringBuilder();
+            String[] words = paragraph.split("\\s+");
+            for (int wi = 0; wi < words.length; wi++) {
+                String w = words[wi];
+
+                if (cur.length() == 0) {
+                    // Start new line
+                    if (fr.getStringWidth(w) <= maxWidth) {
+                        cur.append(w);
+                    } else {
+                        // word longer than line: break it
+                        int start = 0;
+                        while (start < w.length()) {
+                            int end = start + 1;
+                            while (end <= w.length() && fr.getStringWidth(w.substring(start, end)) <= maxWidth) end++;
+                            // back up one if we ran past
+                            if (end - 1 <= start) {
+                                // single char doesn't fit (!) -> force char
+                                lines.add(w.substring(start, Math.min(w.length(), start + 1)));
+                                start += 1;
+                            } else {
+                                lines.add(w.substring(start, end - 1));
+                                start = end - 1;
+                            }
+                        }
+                    }
+                } else {
+                    // try adding with a space
+                    String withSpace = cur.toString() + " " + w;
+                    if (fr.getStringWidth(withSpace) <= maxWidth) {
+                        cur.append(" ").append(w);
+                    } else {
+                        // flush current line
+                        lines.add(cur.toString());
+                        cur.setLength(0);
+
+                        // start new line with word (or broken word)
+                        if (fr.getStringWidth(w) <= maxWidth) {
+                            cur.append(w);
+                        } else {
+                            int start = 0;
+                            while (start < w.length()) {
+                                int end = start + 1;
+                                while (end <= w.length() && fr.getStringWidth(w.substring(start, end)) <= maxWidth) end++;
+                                if (end - 1 <= start) {
+                                    lines.add(w.substring(start, Math.min(w.length(), start + 1)));
+                                    start += 1;
+                                } else {
+                                    lines.add(w.substring(start, end - 1));
+                                    start = end - 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (cur.length() > 0) lines.add(cur.toString());
+
+            // Preserve paragraph breaks (blank line) except after last paragraph
+            if (pi < paragraphs.length - 1) lines.add("");
+        }
+
+        return lines;
     }
 }

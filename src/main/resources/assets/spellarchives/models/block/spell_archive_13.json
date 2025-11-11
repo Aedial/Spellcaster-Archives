@@ -1,0 +1,6 @@
+{
+  "parent": "spellarchives:block/spell_archive",
+  "textures": {
+    "inside": "spellarchives:dynamic/spell_archive_inside_13"
+  }
+}

@@ -40,6 +40,9 @@ configurations {
 dependencies {
     // Electroblob's Wizardry for 1.12.2 via CurseMaven (Mod File from Aug 31, 2025)
     deobfCompile 'curse.maven:electroblobs-wizardry-265642:6950392'
+
+    // Optional integration: Enchantment Library (compile-only; present at runtime in user pack)
+    compileOnly 'curse.maven:enchantment-library-1143553:6679536'
 }
 
 processResources {
@@ -49,5 +52,41 @@ processResources {
     from(sourceSets.main.resources.srcDirs) {
         include 'mcmod.info'
         expand 'version': project.version, 'mcversion': project.minecraft.version
+    }
+
+    // Ensure all other resources are still copied (models, lang, textures, etc.)
+    from(sourceSets.main.resources.srcDirs) {
+        exclude 'mcmod.info'
+    }
+}
+
+
+
+// Create uppercase-case duplicates of language files in the built resources directory
+// This avoids having to maintain duplicate source files for casing-sensitive loaders
+processResources.doLast {
+    def langDir = file("${buildDir}/resources/main/assets/spellarchives/lang")
+    if (!langDir.exists()) return
+
+    // For each language file like 'en_us.lang', create the canonical 'en_US.lang' variant
+    langDir.eachFile { File f ->
+        if (!f.name.toLowerCase().endsWith('.lang')) return
+
+        def base = f.name[0..-6] // strip trailing '.lang'
+        if (!base.contains('_')) return
+
+        def parts = base.split('_', 2)
+        if (parts.length < 2) return
+
+        def lang = parts[0].toLowerCase(java.util.Locale.ROOT)
+        def region = parts[1].toUpperCase(java.util.Locale.ROOT)
+        def targetName = "${lang}_${region}.lang"
+        if (targetName == f.name) return
+
+        def dest = new File(langDir, targetName)
+        if (!dest.exists()) {
+            dest.bytes = f.bytes
+            println "[lang] created canonical variant: ${dest.name}"
+        }
     }
 }

@@ -1,15 +1,23 @@
 package com.spellarchives.registry;
 
-import com.spellarchives.SpellArchives;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.item.Item;
+
 import net.minecraftforge.client.event.ModelRegistryEvent;
 import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
+import com.spellarchives.SpellArchives;
+
+
 @Mod.EventBusSubscriber(modid = SpellArchives.MODID)
 public class ClientModels {
+    /**
+     * Registers custom model resource locations for item forms of blocks.
+     *
+     * @param event Model registry event.
+     */
     @SubscribeEvent
     public static void onModelRegistry(ModelRegistryEvent event) {
         Item item = Item.getItemFromBlock(ModBlocks.SPELL_ARCHIVE);

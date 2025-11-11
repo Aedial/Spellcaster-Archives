@@ -1,20 +1,27 @@
 package com.spellarchives.network;
 
-import com.spellarchives.tile.TileSpellArchive;
-
+import java.nio.charset.StandardCharsets;
 import io.netty.buffer.ByteBuf;
+
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
+
 import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 
-import java.nio.charset.StandardCharsets;
+import com.spellarchives.tile.TileSpellArchive;
 
+
+/**
+ * Client->server request to extract a specific number of spell books of a given key from
+ * a Spell Archive tile. The server validates the tile and key, removes the books, and
+ * transfers them to the player's inventory (dropping if full).
+ */
 public class MessageExtractBook implements IMessage {
     private BlockPos pos;
     private String key;
@@ -28,6 +35,11 @@ public class MessageExtractBook implements IMessage {
         this.amount = amount;
     }
 
+    /**
+     * Decodes the message from the network buffer.
+     *
+     * @param buf The input byte buffer.
+     */
     @Override
     public void fromBytes(ByteBuf buf) {
         this.pos = new BlockPos(buf.readInt(), buf.readInt(), buf.readInt());
@@ -38,6 +50,11 @@ public class MessageExtractBook implements IMessage {
         this.amount = buf.readInt();
     }
 
+    /**
+     * Encodes the message into the network buffer.
+     *
+     * @param buf The output byte buffer.
+     */
     @Override
     public void toBytes(ByteBuf buf) {
         buf.writeInt(pos.getX());
@@ -50,7 +67,17 @@ public class MessageExtractBook implements IMessage {
         buf.writeInt(amount);
     }
 
+    /**
+     * Stateless handler processing extraction requests on the server thread.
+     */
     public static class Handler implements IMessageHandler<MessageExtractBook, IMessage> {
+        /**
+         * Schedules work on the main server thread to perform validation and extraction.
+         *
+         * @param message The received extraction request.
+         * @param ctx Message context.
+         * @return Null response (fire-and-forget).
+         */
         @Override
         public IMessage onMessage(MessageExtractBook message, MessageContext ctx) {
             EntityPlayerMP player = ctx.getServerHandler().player;
