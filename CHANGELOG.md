@@ -7,6 +7,19 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Keep a Changelog: https://keepachangelog.com/en/1.1.0/
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
+## [0.2.1] - 2025-11-11
+### Fixed
+- Fix changelog script (script name) and bump version that was missed in last release.
+- Fix NPE when breaking the Spell Archive next to AE2 Storage Bus (in some versions of AE2-UEL).
+
+### Changed
+- Move from a virtual slot system to true slotless:
+  - Slot doesn't matter for insertion.
+  - Slot still matters to some extent for extraction and reporting (stable order).
+  - Remove stack limit on lookup and extraction.
+  - Remove key deletion on slot exhaustion, to keep the record consistent across ticks.
+- Optimize slot-aware logic (extraction, lookup) to avoid O(n^2) behavior.
+
 ## [0.2.0] - 2025-11-11
 ### Added
 - Add localization entries for GUI, config, and command.
@@ -21,7 +34,7 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
   - Screen darken factor (`SCREEN_DARKEN_FACTOR`) while Archive GUI is open.
 - Add theme system:
   - Theme picker entry in the Forge config GUI (`ClientConfigGuiFactory` + `ThemePickerEntry`).
-  - Dedicated Theme Picker screen (`ThemePickerGui`) with left/right panel theme selection.
+  - Dedicate Theme Picker screen (`ThemePickerGui`) with left/right panel theme selection.
   - Theme Details screen (`ThemeDetailsGui`) showing swatches and per-color Apply / Apply All.
   - Built‑in themes: `bookshelf`, `parchment`, `dark` with preset fills, borders, groove colors, text colors, gradient/shadow suggestions.
 - Dynamic texture generation:

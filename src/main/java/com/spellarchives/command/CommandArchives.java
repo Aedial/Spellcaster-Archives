@@ -122,10 +122,10 @@ public class CommandArchives extends CommandBase {
 
             ItemStack book = new ItemStack(spellBookItem, 1, meta.intValue());
             totalBooksRequested += count;
-            int added = tile.addBooks(book, count);
-            if (added > 0) {
+            ItemStack remaining = tile.addBooks(book, count);
+            if (remaining != book) {
                 addedTypes++;
-                totalBooksAdded += added;
+                totalBooksAdded += (count - remaining.getCount());
             }
         }
 

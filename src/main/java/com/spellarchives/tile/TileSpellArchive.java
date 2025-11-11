@@ -1,6 +1,7 @@
 package com.spellarchives.tile;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +56,10 @@ public class TileSpellArchive extends TileEntity {
     @CapabilityInject(IItemRepository.class)
     private static Capability<IItemRepository> SD_REPO_CAP = null;
 
+    // Mapping of slot -> runtime key (rl|meta) for slot-based extraction
+    private final List<String> slotKeys = new ArrayList<>();
+    // prototypesByKey: runtime key -> 1-count ItemStack prototype (should not be EMPTY)
+    private final Map<String, ItemStack> prototypesByKey = new HashMap<>();
     // Map key: rl|meta (NBT intentionally ignored), value: total count
     // Use LinkedHashMap to keep slot order stable for external handlers (e.g., hoppers)
     private final Map<String, Integer> counts = new LinkedHashMap<>();
@@ -62,7 +67,12 @@ public class TileSpellArchive extends TileEntity {
     // Incremented on content changes; synced to client for GUI refresh
     private int changeCounter = 0;
 
-    // Capability: dynamic view, at least 1 slot for insertion when empty
+    // During block harvest we temporarily suppress exposing capability to avoid AE2 UEL
+    // NPEs when neighbors are updated mid-removal.
+    // This flag is only set right before scheduling removal at end-of-tick.
+    private boolean suppressCap = false;
+
+    // Capability: dynamic view, present at least 1 slot for insertion when empty
     private final IItemHandler itemHandler = new RepoHandler();
 
     // Static metadata -> spell name mapping, built once at first use
@@ -96,123 +106,110 @@ public class TileSpellArchive extends TileEntity {
     private class RepoHandler implements IItemHandler, IItemRepository, ISlotlessItemHandler {
 
         /**
-         * Returns the number of slots presented to external handlers. This includes a
-         * virtual trailing slot that is always empty to allow inserting new spell types
-         * when the archive currently contains none of that type.
+         * Returns the number of slots presented to external handlers. We always expose
+         * at least one slot so external inserters can interact with an otherwise empty archive.
          *
-         * @return Total visible slots including the virtual insertion slot.
+         * @return The number of slots.
+         * @return Total visible slots.
          */
         @Override
         public int getSlots() {
-            // Expose one extra empty slot to allow inserting new book types
-            return counts.size() + 1;
+            return Math.max(1, slotKeys.size());
         }
 
         /**
-         * Returns a representative stack for the given slot. For real slots, the stack count
-         * reflects the minimum of the available amount and the stack's max size. The last,
-         * virtual slot is always empty.
+         * Returns a representative stack for the given slot. The stack's count reflects
+         * the total available amount for that spell type.
          *
          * @param slot Logical slot index.
          * @return A template stack with an amount reflecting availability, or empty if none.
          */
         @Override
         public ItemStack getStackInSlot(int slot) {
-            // The last slot is the virtual insertion slot; always empty
-            if (slot == counts.size()) return ItemStack.EMPTY;
+            if (slot < 0 || slot >= slotKeys.size()) return ItemStack.EMPTY;
 
-            String key = keyAt(slot);
-            if (key == null) return ItemStack.EMPTY;
-
-            ItemStack template = stackFromKey(key);
-            if (template.isEmpty()) return ItemStack.EMPTY;
-
+            String key = slotKeys.get(slot);
             int available = counts.getOrDefault(key, 0);
-            template.setCount(Math.min(available, template.getMaxStackSize()));
-            return template;
+            if (available <= 0) return ItemStack.EMPTY;
+
+            ItemStack proto = prototypesByKey.get(key);
+            ItemStack out = proto.copy();
+            out.setCount(available);
+            return out;
         }
 
         /**
-         * Inserts spell books into the archive. If a concrete slot is addressed, only books
-         * matching that slot's key are accepted; otherwise insertion must target the virtual
-         * slot. Capacity is effectively unbounded (Integer.MAX_VALUE per type); overflow is
+         * Inserts spell books into the archive. Slot index is ignored (slotless semantics).
+         * Capacity is effectively unbounded (Integer.MAX_VALUE per type); overflow is
          * treated as accepted and the remainder is voided to avoid systems overfilling.
          *
-         * @param slot The target slot index; must be the virtual slot when inserting a new type.
+         * @param slot The target slot index; ignored because insertion is slotless.
          * @param stack The incoming stack to insert.
          * @param simulate If true, do not modify state; only compute the result.
-         * @return An empty stack if everything is accepted (including overflow), otherwise the
-         * original stack if rejected for type/slot mismatch.
+         * @return An empty stack unless the stack is invalid, in which case the original stack is returned.
          */
         @Override
         public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
             if (stack.isEmpty() || !isSpellBook(stack)) return stack;
 
-            String key = keyOf(stack);
-            // If inserting into a concrete slot, only accept the matching key; otherwise reject
-            if (slot != counts.size()) {
-                String slotKey = keyAt(slot);
-                if (slotKey == null || !slotKey.equals(key)) return stack;
-            }
-
-            int current = counts.getOrDefault(key, 0);
-            int space = Integer.MAX_VALUE - current;
-
-            if (space <= 0) {
-                // Already at cap; consume and void
-                return ItemStack.EMPTY;
-            }
-
-            int toInsert = stack.getCount();
-
-            if (toInsert > space) {
-                // Overflow case: insert up to cap and void the rest
-                if (!simulate) {
-                    counts.put(key, Integer.MAX_VALUE);
-                    onContentsChanged();
-                }
-                return ItemStack.EMPTY;
-            }
-
-            // Normal insert within capacity
             if (!simulate) {
-                counts.put(key, current + toInsert);
+                // insert into any slot, capping at Integer.MAX_VALUE per type
+                String key = keyOf(stack);
+
+                long current = (long) counts.getOrDefault(key, 0);
+                long newCount = Math.min(current + stack.getCount(), Integer.MAX_VALUE);
+
+                int oldSize = counts.size();
+                counts.put(key, (int) newCount);
+                updateCachedForKey(key, stack, oldSize);
+
                 onContentsChanged();
             }
+
             return ItemStack.EMPTY;
         }
 
         /**
+         * Extracts spell books from the archive by runtime key.
+         *
+         * @param key The runtime key indicating the desired spell type.
+         * @param amount The maximum amount to extract.
+         * @param simulate If true, do not modify state; only compute the result.
+         * @return A stack representing the extracted amount, or empty if unavailable.
+         */
+        public ItemStack extractItemFromKey(String key, int amount, boolean simulate) {
+            if (key == null) return ItemStack.EMPTY;
+
+            int available = counts.getOrDefault(key, 0);
+            if (available <= 0) return ItemStack.EMPTY;
+
+            ItemStack proto = prototypesByKey.get(key);
+            ItemStack out = proto.copy();
+            int toExtract = Math.min(available, amount);
+            out.setCount(toExtract);
+
+            if (!simulate) {
+                counts.put(key, available - toExtract);
+                onContentsChanged();
+            }
+
+            return out;
+        }
+
+        /**
          * Extracts up to the requested amount of books from the specified slot.
-         * The virtual insertion slot cannot be extracted from.
          *
          * @param slot Logical slot index to extract from.
          * @param amount Desired amount to extract.
          * @param simulate If true, do not modify state; only compute the result.
-         * @return A stack representing the extracted books, or empty if none available.
+         * @return A stack representing the extracted books, or empty if none available in that slot.
          */
         @Override
         public ItemStack extractItem(int slot, int amount, boolean simulate) {
-            if (amount <= 0) return ItemStack.EMPTY;
+            if (amount <= 0 || slot < 0 || slot >= slotKeys.size()) return ItemStack.EMPTY;
 
-            // Nothing to extract from the virtual insertion slot
-            if (slot == counts.size()) return ItemStack.EMPTY;
-
-            String key = keyAt(slot);
-            if (key == null) return ItemStack.EMPTY;
-
-            ItemStack base = stackFromKey(key);
-            if (base.isEmpty()) return ItemStack.EMPTY;
-
-            int available = counts.getOrDefault(key, 0);
-            int toExtract = Math.min(amount, Math.min(available, base.getMaxStackSize()));
-            if (toExtract <= 0) return ItemStack.EMPTY;
-
-            ItemStack out = base.copy();
-            out.setCount(toExtract);
-
-            if (!simulate) removeBooks(out, toExtract);
-            return out;
+            String key = slotKeys.get(slot);
+            return extractItemFromKey(key, amount, simulate);
         }
 
         /**
@@ -228,22 +225,19 @@ public class TileSpellArchive extends TileEntity {
         }
 
         /**
-         * Only allows valid spell books. Concrete slots accept only their own key; the
-         * trailing virtual slot accepts any valid book type.
+         * Only allows valid spell books.
          *
          * @param slot Logical slot index.
          * @param stack Candidate stack to test.
-         * @return True if the stack can be placed in the given slot.
+         * @return True if the stack can be inserted into the Archives.
          */
         @Override
         public boolean isItemValid(int slot, ItemStack stack) {
             if (stack.isEmpty() || !isSpellBook(stack)) return false;
 
-            // Virtual insertion slot accepts any valid book
-            if (slot == counts.size()) return true;
+            if (slot < 0 || slot >= slotKeys.size()) return false;
 
-            // Concrete slots accept only their own book key for merging
-            String key = keyAt(slot);
+            String key = slotKeys.get(slot);
             return key != null && key.equals(keyOf(stack));
         }
 
@@ -257,12 +251,9 @@ public class TileSpellArchive extends TileEntity {
         @Override
         public NonNullList<IItemRepository.ItemRecord> getAllItems() {
             NonNullList<IItemRepository.ItemRecord> list = NonNullList.create();
-            for (Map.Entry<String, Integer> e : counts.entrySet()) {
-                ItemStack proto = stackFromKey(e.getKey());
-                if (!proto.isEmpty()) {
-                    proto.setCount(1);
-                    list.add(new IItemRepository.ItemRecord(proto, e.getValue()));
-                }
+            for (HashMap.Entry<String, ItemStack> entry : prototypesByKey.entrySet()) {
+                int total = counts.getOrDefault(entry.getKey(), 0);
+                list.add(new IItemRepository.ItemRecord(entry.getValue().copy(), total));
             }
 
             return list;
@@ -282,24 +273,7 @@ public class TileSpellArchive extends TileEntity {
             if (stack.isEmpty() || !isSpellBook(stack)) return stack;
             if (predicate != null && !predicate.test(stack)) return stack;
 
-            String key = keyOf(stack);
-            int current = counts.getOrDefault(key, 0);
-            int space = Integer.MAX_VALUE - current;
-            if (space <= 0) return ItemStack.EMPTY;
-
-            int toInsert = Math.min(space, stack.getCount());
-            if (!simulate) {
-                counts.put(key, current + toInsert);
-                onContentsChanged();
-            }
-
-            int remainder = stack.getCount() - toInsert;
-            if (remainder <= 0) return ItemStack.EMPTY;
-
-            ItemStack rem = stack.copy();
-            rem.setCount(remainder);
-
-            return rem;
+            return insertItem(0, stack, simulate);
         }
 
         /**
@@ -318,18 +292,42 @@ public class TileSpellArchive extends TileEntity {
             if (predicate != null && !predicate.test(stack)) return ItemStack.EMPTY;
 
             String key = keyOf(stack);
-            int available = counts.getOrDefault(key, 0);
-            if (available <= 0) return ItemStack.EMPTY;
-
-            int toExtract = Math.min(available, amount);
-
-            ItemStack out = stack.copy();
-            out.setCount(toExtract);
-
-            if (!simulate) removeBooks(stack, toExtract);
-
-            return out;
+            return extractItemFromKey(key, amount, simulate);
         }
+    }
+
+    /**
+     * Inserts spell books into the archive.
+     *
+     * @param stack The stack to insert.
+     * @return The remainder if not fully inserted, or empty if completely accepted.
+     */
+    public ItemStack addBooks(ItemStack stack) {
+        return itemHandler.insertItem(0, stack, false);
+    }
+
+    /**
+     * Inserts spell books into the archive.
+     *
+     * @param stack The stack to insert.
+     * @param count The number of books to insert.
+     * @return The remainder if not fully inserted, or empty if completely accepted.
+     */
+    public ItemStack addBooks(ItemStack stack, int count) {
+        ItemStack toInsert = stack.copy();
+        toInsert.setCount(count);
+        return itemHandler.insertItem(0, toInsert, false);
+    }
+
+    /**
+     * Removes spell books from the archive.
+     *
+     * @param stack The spell book type to remove.
+     * @param count The number of books to remove.
+     * @return The extracted books, or empty if none were available.
+     */
+    public ItemStack removeBooks(ItemStack stack, int count) {
+        return ((IItemRepository) itemHandler).extractItem(stack, count, false, null);
     }
 
     /**
@@ -353,6 +351,7 @@ public class TileSpellArchive extends TileEntity {
         Item item = stack.getItem();
         ResourceLocation rl = item.getRegistryName();
         int meta = stack.getMetadata();
+
         return rl + "|" + meta;
     }
 
@@ -417,74 +416,22 @@ public class TileSpellArchive extends TileEntity {
     }
 
     /**
-     * Gets the runtime key located at the given logical slot index.
+     * Update internal caches to ensure the given key is represented in the slot list
+     * and prototype map.
      *
-     * @param slot Logical slot index.
-     * @return The key string or null if the slot index is out of range or empty.
+     * @param key The runtime key to update.
+     * @param proto The prototype stack to use for the key (should not be null).
+     * @param oldSize Previous size of the counts map.
      */
-    private String keyAt(int slot) {
-        if (counts.isEmpty() || slot < 0 || slot >= counts.size()) return null;
+    private void updateCachedForKey(String key, ItemStack proto, int oldSize) {
+        // If the counts map grew, we have a new key and must create slot/prototype caches.
+        if (counts.size() != oldSize) {
+            slotKeys.add(key);
 
-        int i = 0;
-        for (String k : counts.keySet()) {
-            if (i++ == slot) return k;
+            proto = proto.copy();
+            proto.setCount(1);
+            prototypesByKey.put(key, proto);
         }
-
-        return null;
-    }
-
-    /**
-     * Adds the specified number of books of the given type to the archive.
-     * @param stack The spell book type to add.
-     * @param count The number of books to add.
-     * @return The number of books actually added (should equal count unless something goes wrong).
-     */
-    public int addBooks(ItemStack stack, int count) {
-        String key = keyOf(stack);
-        int current = counts.getOrDefault(key, 0);
-
-        if (count <= 0) return 0;
-
-        int space = Integer.MAX_VALUE - current;
-        if (space <= 0) return count;   // Already full; treat as accepted (voided)
-
-        if (count > space) {
-            // Fill to cap and void the remainder; report all handled
-            counts.put(key, Integer.MAX_VALUE);
-        } else {
-            int newVal = current + count;
-            counts.put(key, newVal);
-        }
-
-        onContentsChanged();
-        return count;
-    }
-
-    /**
-     * Removes up to the given number of books of the provided type from the archive.
-     * If the remaining amount reaches zero, the entry is removed.
-     *
-     * @param stack The spell book type to remove.
-     * @param count The number of books to remove.
-     * @return The number of books actually removed (0 if unavailable).
-     */
-    public int removeBooks(ItemStack stack, int count) {
-        String key = keyOf(stack);
-        int current = counts.getOrDefault(key, 0);
-
-        int removed = Math.min(current, count);
-        if (removed > 0) {
-            int remaining = current - removed;
-            if (remaining == 0) {
-                counts.remove(key);
-            } else {
-                counts.put(key, remaining);
-            }
-
-            onContentsChanged();
-        }
-
-        return removed;
     }
 
     /**
@@ -494,16 +441,24 @@ public class TileSpellArchive extends TileEntity {
      * @return Stored count for the type (0 if none).
      */
     public int getCountFor(ItemStack stack) {
-        return counts.getOrDefault(keyOf(stack), 0);
+        String key = keyOf(stack);
+        return counts.getOrDefault(key, 0);
     }
 
     /**
      * Provides a snapshot copy of the internal counts map for safe client-side GUI rendering.
+     * Keys with zero counts are omitted.
      *
      * @return A new copy of the counts map.
      */
     public Map<String, Integer> getSnapshot() {
-        return new LinkedHashMap<>(counts);
+        LinkedHashMap<String, Integer> out = new LinkedHashMap<>();
+        for (HashMap.Entry<String, Integer> entry : counts.entrySet()) {
+            int count = entry.getValue();
+            if (count > 0) out.put(entry.getKey(), count);
+        }
+
+        return out;
     }
 
     /**
@@ -513,7 +468,12 @@ public class TileSpellArchive extends TileEntity {
      * @return The number of distinct types.
      */
     public int getDistinctSpellTypeCount() {
-        return counts.size();
+        int ct = 0;
+        for (int c : counts.values()) {
+            if (c > 0) ct++;
+        }
+
+        return ct;
     }
 
     /**
@@ -523,7 +483,7 @@ public class TileSpellArchive extends TileEntity {
      * @return A 1-count stack or ItemStack.EMPTY if unknown.
      */
     public ItemStack stackFromKeyPublic(String key) {
-        return stackFromKey(key);
+        return prototypesByKey.getOrDefault(key, ItemStack.EMPTY);
     }
 
     /**
@@ -673,14 +633,13 @@ public class TileSpellArchive extends TileEntity {
         super.writeToNBT(compound);
 
         NBTTagList list = new NBTTagList();
-        for (Map.Entry<String, Integer> e : counts.entrySet()) {
-            String runtimeKey = e.getKey();
-            String spellName = keyToSpellName(runtimeKey);
-            
+        for (HashMap.Entry<String, Integer> entry : counts.entrySet()) {
+            String spellName = keyToSpellName(entry.getKey());
+
             if (spellName != null) {
                 NBTTagCompound tag = new NBTTagCompound();
                 tag.setString("spell", spellName);
-                tag.setInteger("count", e.getValue());
+                tag.setInteger("count", entry.getValue());
                 list.appendTag(tag);
             }
         }
@@ -701,8 +660,11 @@ public class TileSpellArchive extends TileEntity {
     public void readFromNBT(NBTTagCompound compound) {
         super.readFromNBT(compound);
 
+        // Clear all slot-backed structures
+        slotKeys.clear();
+        prototypesByKey.clear();
         counts.clear();
-        
+
         if (compound.hasKey("spells")) {
             NBTTagList list = compound.getTagList("spells", 10);
             int unmappedCount = 0;
@@ -716,12 +678,18 @@ public class TileSpellArchive extends TileEntity {
                 // Convert spell name to runtime key
                 String runtimeKey = spellNameToKey(spellName);
 
-                if (runtimeKey == null) {
+                ItemStack proto = null;
+                if (runtimeKey != null) proto = stackFromKey(runtimeKey);
+
+                if (runtimeKey == null || proto == null || proto.isEmpty()) {
+                    // unmapped spell (mod removed or spell deleted)
                     unmappedCount++;
                     String modid = spellName.contains(":") ? spellName.split(":", 2)[0] : "unknown";
                     unmappedByMod.put(modid, unmappedByMod.getOrDefault(modid, 0L) + count);
                 } else {
+                    // create caches for this runtime key using the decoded prototype
                     counts.put(runtimeKey, count);
+                    updateCachedForKey(runtimeKey, proto, 0);  // everything is new at this point, so oldSize=0
                 }
             }
 
@@ -755,6 +723,8 @@ public class TileSpellArchive extends TileEntity {
      */
     @Override
     public boolean hasCapability(Capability<?> capability, EnumFacing facing) {
+        if (suppressCap) return false;
+
         if (capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) return true;
 
         if (SD_REPO_CAP != null && capability == SD_REPO_CAP) return true;
@@ -772,11 +742,21 @@ public class TileSpellArchive extends TileEntity {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getCapability(Capability<T> capability, EnumFacing facing) {
+        if (suppressCap) return null;
+
         if (capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) return (T) itemHandler;
 
         if (SD_REPO_CAP != null && capability == SD_REPO_CAP) return (T) itemHandler;
 
         return super.getCapability(capability, facing);
+    }
+
+    /**
+     * Called by the block right before scheduling end-of-tick removal to temporarily
+     * hide capabilities during neighbor updates.
+     */
+    public void suppressExternalCaps() {
+        this.suppressCap = true;
     }
 
     // ---- Client sync ----

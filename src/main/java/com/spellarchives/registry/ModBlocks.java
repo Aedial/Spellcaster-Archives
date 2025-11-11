@@ -67,7 +67,6 @@ public class ModBlocks {
                  * Places {@link #block} and, if present, merges the item's {@code BlockEntityTag} into the freshly
                  * created {@link TileSpellArchive}. This preserves stored spell counts and any other TE state.
                  *
-
                  * @param stack the item stack being placed.
                  * @param player the player placing the block.
                  * @param world the world in which the block is being placed.

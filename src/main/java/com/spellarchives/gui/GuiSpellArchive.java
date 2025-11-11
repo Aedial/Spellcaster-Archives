@@ -176,6 +176,8 @@ public class GuiSpellArchive extends GuiContainer {
         tierOrder.clear();
 
         for (Map.Entry<String, Integer> e : tile.getSnapshot().entrySet()) {
+            if (e.getValue() <= 0) continue;
+
             ItemStack stack = tile.stackFromKeyPublic(e.getKey());
             if (stack.isEmpty()) continue;
 

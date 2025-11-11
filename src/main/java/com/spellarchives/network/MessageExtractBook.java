@@ -94,12 +94,10 @@ public class MessageExtractBook implements IMessage {
                 ItemStack template = tile.stackFromKeyPublic(message.key);
                 if (template.isEmpty()) return;
 
-                int removed = tile.removeBooks(template, message.amount);
-                if (removed > 0) {
-                    ItemStack give = template.copy();
-                    give.setCount(removed);
-                    if (!player.inventory.addItemStackToInventory(give)) {
-                        player.dropItem(give, false);
+                ItemStack extracted = tile.removeBooks(template, message.amount);
+                if (!extracted.isEmpty()) {
+                    if (!player.inventory.addItemStackToInventory(extracted)) {
+                        player.dropItem(extracted, false);
                     }
 
                     // Ensure inventory updates are pushed while a custom container is open

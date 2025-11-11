@@ -21,6 +21,7 @@ import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 
 import com.spellarchives.SpellArchives;
 import com.spellarchives.client.GuiHandler;
@@ -153,8 +154,8 @@ public class BlockSpellArchive extends BlockContainer {
 
             ItemStack held = playerIn.getHeldItem(hand);
             if (!held.isEmpty() && archive.isSpellBook(held)) {
-                int added = archive.addBooks(held, held.getCount());
-                if (added > 0) held.shrink(added);
+                ItemStack remaining = archive.addBooks(held);
+                if (remaining != held) playerIn.setHeldItem(hand, remaining);
             } else {
                 playerIn.openGui(SpellArchives.instance, GuiHandler.GUI_SPELL_ARCHIVE, worldIn, pos.getX(), pos.getY(), pos.getZ());
             }
@@ -190,6 +191,33 @@ public class BlockSpellArchive extends BlockContainer {
         stack.setTagCompound(blockTag);
 
         spawnAsEntity(world, pos, stack);
+
+        // Suppress capabilities so only during the neighbor-change window, and
+        // delay the actual removal to the end of the tick to avoid AE2's NPE path.
+        if (!world.isRemote) {
+            TileSpellArchive archive = (TileSpellArchive) te;
+            archive.suppressExternalCaps();
+
+            WorldServer ws = (WorldServer) world;
+            ws.addScheduledTask(() -> {
+                if (ws.getBlockState(pos).getBlock() == this) ws.setBlockToAir(pos);
+            });
+        }
+    }
+
+    /**
+     * Delay block removal until harvestBlock so the tile entity is still present
+     * when we serialize it into the dropped stack. This improves resilience with
+     * AE2 storage bus neighbor updates by ensuring the drop is created even if a
+     * downstream mod errors during neighbor change handling.
+     */
+    @Override
+    public boolean removedByPlayer(IBlockState state, World world, BlockPos pos, EntityPlayer player, boolean willHarvest) {
+        // If we are going to harvest (player not in creative or block configured to drop),
+        // keep the block around for harvestBlock; actual removal is done there.
+        if (willHarvest) return true;
+
+        return super.removedByPlayer(state, world, pos, player, willHarvest);
     }
 
     /**
