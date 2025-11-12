@@ -12,8 +12,8 @@ chat.spellarchives.invalid_number=无效的数量值：%s
 chat.spellarchives.player_only=此命令必须由玩家执行（以定位档案馆）。
 chat.spellarchives.look_at_archive=注视一个档案馆方块并再次执行此命令。
 chat.spellarchives.not_archive=该方块不是法术档案馆。
-chat.spellarchives.no_ebwizardry_book=未找到巫术学的法术书物品 (ebwizardry:spell_book)。
-chat.spellarchives.filled_summary=已向档案馆填充了%d种法术类型 (%d/%d)。
+chat.spellarchives.no_ebwizardry_book=未找到巫术学的法术书物品（ebwizardry:spell_book）。
+chat.spellarchives.filled_summary=已向档案馆填充了%d种法术类型（%d/%d）。
 
 # GUI labels and formats
 gui.spellarchives.prev=<
@@ -46,8 +46,8 @@ numunit.B=B
 numunit.T=T
 
 # Config property descriptions shown in the in-game config GUI
-config.spellarchives.width_ratio_desc=档案窗口占屏幕宽度的比例 (0 - 100%)。
-config.spellarchives.height_ratio_desc=档案窗口占屏幕高度的比例 (0 - 100%)。
+config.spellarchives.width_ratio_desc=档案窗口占屏幕宽度的比例（0 - 100%）。
+config.spellarchives.height_ratio_desc=档案窗口占屏幕高度的比例（0 - 100%）。
 config.spellarchives.min_width_desc=档案窗口的最小宽度（像素）。
 config.spellarchives.min_height_desc=档案窗口的最小高度（像素）。
 
@@ -59,7 +59,7 @@ config.spellarchives.row_gap_desc=书脊行之间的垂直间距（像素）。
 config.spellarchives.margin_desc=档案窗口的外边距（像素）。
 config.spellarchives.panel_radius_desc=主窗口背景的圆角半径（像素）。
 config.spellarchives.right_panel_min_width_desc=右侧详细信息面板的最小宽度（像素）。
-config.spellarchives.right_panel_ratio_desc=分配给右侧详细信息面板的窗口宽度比例 (0 - 100%)。
+config.spellarchives.right_panel_ratio_desc=分配给右侧详细信息面板的窗口宽度比例（0 - 100%）。
 config.spellarchives.right_panel_radius_desc=右侧面板背景的圆角半径（像素）。
 config.spellarchives.grid_inner_padding_desc=左侧面板边缘与内容网格之间的内边距（像素）。
 config.spellarchives.bottom_bar_height_desc=底部为导航控件预留的高度（像素）。
@@ -84,8 +84,8 @@ config.spellarchives.groove_base_desc=书架凹槽的基础填充颜色（十六
 config.spellarchives.groove_hl_desc=书架凹槽的顶部高亮颜色（十六进制）。接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB。例如：0xFFFFFFFF
 config.spellarchives.groove_sh_desc=书架凹槽的底部阴影颜色（十六进制）。接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB。例如：0xFF6E6E6E
 
-config.spellarchives.panel_gradient_desc=应用于主题面板背景的垂直渐变强度 (0 - 100%)。
-config.spellarchives.outer_shadow_desc=应用于主题面板的细微内/外阴影强度 (0 - 100%)。
+config.spellarchives.panel_gradient_desc=应用于主题面板背景的垂直渐变强度（0 - 100%）。
+config.spellarchives.outer_shadow_desc=应用于主题面板的细微内/外阴影强度（0 - 100%）。
 
 # Navigation
 config.spellarchives.nav_button_size_desc=上一页/下一页导航按钮的尺寸（像素）。
