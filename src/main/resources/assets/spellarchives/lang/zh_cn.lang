@@ -1,0 +1,228 @@
+tile.spellarchives.spell_archive.name=施法者档案馆
+
+config.spellarchives.theme.bookshelf=书架
+config.spellarchives.theme.parchment=羊皮纸
+config.spellarchives.theme.dark=暗色
+config.spellarchives.gui.leftPanel=左侧面板
+config.spellarchives.gui.rightPanel=右侧面板
+
+# Chat/command messages
+chat.spellarchives.usage=用法：%s
+chat.spellarchives.invalid_number=无效的数量值：%s
+chat.spellarchives.player_only=此命令必须由玩家执行（以定位档案馆）。
+chat.spellarchives.look_at_archive=注视一个档案馆方块并再次执行此命令。
+chat.spellarchives.not_archive=该方块不是法术档案馆。
+chat.spellarchives.no_ebwizardry_book=未找到巫术学的法术书物品（ebwizardry:spell_book）。
+chat.spellarchives.filled_summary=已向档案馆填充了%d种法术类型（%d/%d）。
+
+# GUI labels and formats
+gui.spellarchives.prev=<
+gui.spellarchives.next=>
+gui.spellarchives.tier_fallback=等阶 %d
+gui.spellarchives.instant=瞬间
+gui.spellarchives.cost_unknown=消耗：?
+gui.spellarchives.cooldown_unknown=冷却：？
+gui.spellarchives.charge_unknown=充能：？
+gui.spellarchives.cost_fmt=消耗：%d魔力%s
+gui.spellarchives.cooldown_fmt=冷却：%s
+gui.spellarchives.charge_fmt=充能：%s
+gui.spellarchives.count_fmt=数量：%d
+gui.spellarchives.config_title=施法者档案馆 - 客户端设置
+config.spellarchives.theme_picker=主题选择器
+config.spellarchives.apply=应用
+config.spellarchives.apply_all=全部应用
+
+# Time unit abbreviations
+timeunit.t=t
+timeunit.s=s
+timeunit.m=m
+timeunit.h=h
+timeunit.d=d
+
+# Compact number suffixes
+numunit.k=k
+numunit.M=M
+numunit.B=B
+numunit.T=T
+
+# Config property descriptions shown in the in-game config GUI
+config.spellarchives.width_ratio_desc=档案窗口占屏幕宽度的比例（0 - 100%）。
+config.spellarchives.height_ratio_desc=档案窗口占屏幕高度的比例（0 - 100%）。
+config.spellarchives.min_width_desc=档案窗口的最小宽度（像素）。
+config.spellarchives.min_height_desc=档案窗口的最小高度（像素）。
+
+config.spellarchives.cell_w_desc=左侧面板上单个书脊单元的宽度（像素）。
+config.spellarchives.cell_h_desc=左侧面板上单个书脊单元的高度（像素）。
+config.spellarchives.row_gap_desc=书脊行之间的垂直间距（像素）。
+
+# Layout and spacing
+config.spellarchives.margin_desc=档案窗口的外边距（像素）。
+config.spellarchives.panel_radius_desc=主窗口背景的圆角半径（像素）。
+config.spellarchives.right_panel_min_width_desc=右侧详细信息面板的最小宽度（像素）。
+config.spellarchives.right_panel_ratio_desc=分配给右侧详细信息面板的窗口宽度比例（0 - 100%）。
+config.spellarchives.right_panel_radius_desc=右侧面板背景的圆角半径（像素）。
+config.spellarchives.grid_inner_padding_desc=左侧面板边缘与内容网格之间的内边距（像素）。
+config.spellarchives.bottom_bar_height_desc=底部为导航控件预留的高度（像素）。
+config.spellarchives.left_panel_bottom_pad_desc=左侧面板内网格下方的额外底部内边距（像素）。
+
+config.spellarchives.spine_enable_curvature_desc=启用书脊上的弯曲亮度效果。
+config.spellarchives.spine_enable_tilt_desc=为书脊启用轻微的不对称倾斜以增加多样性。
+config.spellarchives.spine_enable_noise_desc=向书脊纹理添加细微的每像素噪点。
+config.spellarchives.spine_enable_bands_desc=在书脊上启用细长的水平装饰条纹。
+config.spellarchives.spine_embed_icon_desc=将元素图标直接嵌入书脊纹理，而不是将其作为覆盖层绘制。
+
+onfig.spellarchives.screen_darken_desc=GUI后方世界变暗的程度（0% = 不变暗，100% = 完全变黑）。范围：0 - 100%
+
+config.spellarchives.left_panel_fill_desc=左侧面板（主窗口）填充颜色（十六进制）。接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB。例如：0xFFE5E5E5
+config.spellarchives.left_panel_border_desc=左侧面板（主窗口）边框颜色（十六进制）。接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB。例如：0xFFB0B0B0
+config.spellarchives.right_panel_fill_desc=右侧详细信息面板背景填充颜色（十六进制）。接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB。例如：0xFF000000
+config.spellarchives.right_panel_border_desc=右侧面板边框颜色（十六进制）。接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB。例如：0xFF111111
+config.spellarchives.detail_text_desc=右侧面板中的次要/详细信息文本颜色（十六进制）。接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB。例如：0xFFAAAAAA
+config.spellarchives.hover_border_desc=鼠标悬停时书脊周围的边框颜色（十六进制）。接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB。例如：0x90FFFFFF
+
+config.spellarchives.groove_base_desc=书架凹槽的基础填充颜色（十六进制）。接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB。例如：0xFF9A9A9A
+config.spellarchives.groove_hl_desc=书架凹槽的顶部高亮颜色（十六进制）。接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB。例如：0xFFFFFFFF
+config.spellarchives.groove_sh_desc=书架凹槽的底部阴影颜色（十六进制）。接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB。例如：0xFF6E6E6E
+
+config.spellarchives.panel_gradient_desc=应用于主题面板背景的垂直渐变强度（0 - 100%）。
+config.spellarchives.outer_shadow_desc=应用于主题面板的细微内/外阴影强度（0 - 100%）。
+
+# Navigation
+config.spellarchives.nav_button_size_desc=上一页/下一页导航按钮的尺寸（像素）。
+config.spellarchives.arrows_y_offset_desc=导航按钮行相对于网格末端的额外垂直偏移量（像素；负值则会向上移动）。
+config.spellarchives.spine_band_thickness_desc=绘制在书脊上的每个装饰条纹的厚度（像素）。
+config.spellarchives.spine_band_gap_desc=书脊上两个装饰条纹之间的间隙（像素）。
+config.spellarchives.spine_band_top_space_desc=从书脊可用区域顶部到第一个条纹的空间（像素）。
+
+# Human-friendly config property display names (shown in the config GUI)
+config.spellarchives.width_ratio=窗口宽度比例
+config.spellarchives.height_ratio=窗口高度比例
+config.spellarchives.min_width=最小窗口宽度
+config.spellarchives.min_height=最小窗口高度
+config.spellarchives.cell_w=书脊单元宽度
+config.spellarchives.cell_h=书脊单元高度
+config.spellarchives.row_gap=行间距（像素）
+config.spellarchives.spine_enable_curvature=启用书脊弯曲
+config.spellarchives.spine_enable_tilt=启用书脊倾斜
+config.spellarchives.spine_enable_noise=启用书脊噪点
+config.spellarchives.spine_enable_bands=启用书脊条纹
+config.spellarchives.spine_embed_icon=将元素图标嵌入书脊
+config.spellarchives.screen_darken_factor=屏幕变暗程度
+config.spellarchives.left_panel_fill=左侧面板填充色
+config.spellarchives.left_panel_border=左侧面板边框色
+config.spellarchives.right_panel_fill=右侧面板填充色
+config.spellarchives.right_panel_border=右侧面板边框色
+config.spellarchives.detail_text=详细信息文本颜色
+config.spellarchives.hover_border=悬停边框颜色
+config.spellarchives.groove_base=凹槽基础色
+config.spellarchives.groove_hl=凹槽高亮色
+config.spellarchives.groove_sh=凹槽阴影色
+config.spellarchives.left_panel_theme=左侧面板主题
+config.spellarchives.right_panel_theme=右侧面板主题
+config.spellarchives.panel_gradient=面板渐变强度
+config.spellarchives.outer_shadow=外阴影强度
+config.spellarchives.default_gui_width=默认GUI宽度
+config.spellarchives.default_gui_height=默认GUI高度
+config.spellarchives.margin=窗口外边距
+config.spellarchives.panel_radius=主面板圆角半径
+config.spellarchives.right_panel_min_width=右侧面板最小宽度
+config.spellarchives.right_panel_ratio=右侧面板宽度比例
+config.spellarchives.right_panel_radius=右侧面板圆角半径
+config.spellarchives.grid_inner_padding=左侧面板内边距
+config.spellarchives.bottom_bar_height=底部栏高度
+config.spellarchives.left_panel_bottom_pad=左侧面板底部内边距
+config.spellarchives.nav_button_size=导航按钮尺寸
+config.spellarchives.arrows_y_offset=导航行Y轴偏移
+config.spellarchives.spine_band_thickness=书脊条纹厚度
+config.spellarchives.spine_band_gap=书脊条纹间隙
+config.spellarchives.spine_band_top_space=书脊条纹顶部空间
+
+# Also provide the same keys with the 'gui' subprefix since some Forge versions
+# look up property display names as 'config.<modid>.gui.<property>' instead.
+config.spellarchives.gui.width_ratio=窗口宽度比例
+config.spellarchives.gui.height_ratio=窗口高度比例
+config.spellarchives.gui.min_width=最小窗口宽度
+config.spellarchives.gui.min_height=最小窗口高度
+config.spellarchives.gui.cell_w=书脊单元宽度
+config.spellarchives.gui.cell_h=书脊单元高度
+config.spellarchives.gui.row_gap=行间距（像素）
+config.spellarchives.gui.spine_enable_curvature=启用书脊弯曲
+config.spellarchives.gui.spine_enable_tilt=启用书脊倾斜
+config.spellarchives.gui.spine_enable_noise=启用书脊噪点
+config.spellarchives.gui.spine_enable_bands=启用书脊条纹
+config.spellarchives.gui.spine_embed_icon=将元素图标嵌入书脊
+config.spellarchives.gui.screen_darken_factor=屏幕变暗程度
+config.spellarchives.gui.left_panel_fill=左侧面板填充色
+config.spellarchives.gui.left_panel_border=左侧面板边框色
+config.spellarchives.gui.right_panel_fill=右侧面板填充色
+config.spellarchives.gui.right_panel_border=右侧面板边框色
+config.spellarchives.gui.detail_text=详细信息文本颜色
+config.spellarchives.gui.hover_border=悬停边框颜色
+config.spellarchives.gui.groove_base=凹槽基础色
+config.spellarchives.gui.groove_hl=凹槽高亮色
+config.spellarchives.gui.groove_sh=凹槽阴影色
+config.spellarchives.gui.left_panel_theme=左侧面板主题
+config.spellarchives.gui.right_panel_theme=右侧面板主题
+config.spellarchives.gui.panel_gradient=面板渐变强度
+config.spellarchives.gui.outer_shadow=外阴影强度
+config.spellarchives.gui.default_gui_width=默认GUI宽度
+config.spellarchives.gui.default_gui_height=默认GUI高度
+config.spellarchives.outer_shadow_strength=外阴影强度（详细）
+config.spellarchives.gui.outer_shadow_strength=外阴影强度（详细）
+config.spellarchives.gui.outer_shadow_strength.tooltip=应用于主题面板的细微内/外阴影强度（0 - 100%）。
+config.spellarchives.gui.margin=窗口外边距
+config.spellarchives.gui.panel_radius=主面板圆角半径
+config.spellarchives.gui.right_panel_min_width=右侧面板最小宽度
+config.spellarchives.gui.right_panel_ratio=右侧面板宽度比例
+config.spellarchives.gui.right_panel_radius=右侧面板圆角半径
+config.spellarchives.gui.grid_inner_padding=左侧面板内边距
+config.spellarchives.gui.bottom_bar_height=底部栏高度
+config.spellarchives.gui.left_panel_bottom_pad=左侧面板底部内边距
+config.spellarchives.gui.nav_button_size=导航按钮尺寸
+config.spellarchives.gui.arrows_y_offset=导航行Y轴偏移
+
+# Tooltips (Forge GUI reads <languageKey>.tooltip when present)
+config.spellarchives.gui.width_ratio.tooltip=档案窗口占屏幕宽度的比例（0 - 100%）。
+config.spellarchives.gui.height_ratio.tooltip=档案窗口占屏幕高度的比例（0 - 100%）。
+config.spellarchives.gui.min_width.tooltip=档案窗口的最小宽度（像素）。
+config.spellarchives.gui.min_height.tooltip=档案窗口的最小高度（像素）。
+config.spellarchives.gui.cell_w.tooltip=左侧面板上单个书脊单元的宽度（像素）。
+config.spellarchives.gui.cell_h.tooltip=左侧面板上单个书脊单元的高度（像素）。
+config.spellarchives.gui.row_gap.tooltip=书脊行之间的垂直间距（像素）。
+config.spellarchives.gui.margin.tooltip=档案窗口的外边距（像素）。
+config.spellarchives.gui.panel_radius.tooltip=主窗口背景的圆角半径（像素）。
+config.spellarchives.gui.right_panel_min_width.tooltip=右侧详细信息面板的最小宽度（像素）。
+config.spellarchives.gui.right_panel_ratio.tooltip=分配给右侧详细信息面板的窗口宽度比例（0 - 100%）。
+config.spellarchives.gui.right_panel_radius.tooltip=右侧面板背景的圆角半径（像素）。
+config.spellarchives.gui.grid_inner_padding.tooltip=左侧面板边缘与内容网格之间的内边距（像素）。
+config.spellarchives.gui.bottom_bar_height.tooltip=底部为导航控件预留的高度（像素）。
+config.spellarchives.gui.left_panel_bottom_pad.tooltip=左侧面板内网格下方的额外底部内边距（像素）。
+config.spellarchives.gui.spine_enable_curvature.tooltip=启用书脊上的弯曲亮度效果。
+config.spellarchives.gui.spine_enable_tilt.tooltip=为书脊启用轻微的不对称倾斜以增加变化。
+config.spellarchives.gui.spine_enable_noise.tooltip=向书脊纹理添加细微的每像素噪点。
+config.spellarchives.gui.spine_enable_bands.tooltip=在书脊上启用细长的装饰性水平条纹。
+config.spellarchives.gui.spine_embed_icon.tooltip=将元素图标直接嵌入书脊纹理，而不是将其作为覆盖层绘制。
+config.spellarchives.gui.screen_darken_factor.tooltip=使GUI后方世界变暗的程度（0 = 不变暗，1 = 完全变黑）。
+config.spellarchives.gui.left_panel_fill.tooltip=左侧面板（主窗口）填充颜色（接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB）。
+config.spellarchives.gui.left_panel_border.tooltip=左侧面板（主窗口）边框颜色（接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB）。
+config.spellarchives.gui.right_panel_fill.tooltip=右侧详细信息面板背景填充颜色（接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB）。
+config.spellarchives.gui.right_panel_border.tooltip=右侧面板边框颜色（接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB）。
+config.spellarchives.gui.detail_text.tooltip=右侧面板中的次要/详细信息文本颜色（接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB）。
+config.spellarchives.gui.hover_border.tooltip=鼠标悬停时书脊周围的边框颜色（接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB）。
+config.spellarchives.gui.groove_base.tooltip=书架凹槽的基础填充颜色（接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB）。
+config.spellarchives.gui.groove_hl.tooltip=书架凹槽的顶部高亮颜色（接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB）。
+config.spellarchives.gui.groove_sh.tooltip=书架凹槽的底部阴影颜色（接受 0xAARRGGBB 或 #RRGGBB/#AARRGGBB）。
+config.spellarchives.gui.left_panel_theme.tooltip=为左侧（主）面板选择预设主题。选择主题将覆盖显式设置的颜色。
+config.spellarchives.gui.right_panel_theme.tooltip=为右侧详细信息面板选择预设主题。选择主题将覆盖显式设置的颜色。
+config.spellarchives.gui.panel_gradient.tooltip=应用于主题面板背景的垂直渐变强度（0 - 100%）。
+config.spellarchives.gui.outer_shadow.tooltip=应用于主题面板的细微内/外阴影强度（0 - 100%）。
+config.spellarchives.gui.default_gui_width.tooltip=当比例会产生较小宽度时，档案窗口的基础宽度（像素）。
+config.spellarchives.gui.default_gui_height.tooltip=当比例会产生较小高度时，档案窗口的基础高度（像素）。
+config.spellarchives.gui.nav_button_size.tooltip=上一页/下一页导航按钮的尺寸（像素）。
+config.spellarchives.gui.arrows_y_offset.tooltip=导航按钮行相对于网格末端的额外垂直偏移量（像素；负值则会向上移动）。
+config.spellarchives.gui.spine_band_thickness.tooltip=绘制在书脊上的每个装饰条纹的厚度（像素）。
+config.spellarchives.gui.spine_band_gap.tooltip=书脊上两个装饰条纹之间的间隙（像素）。
+config.spellarchives.gui.spine_band_top_space.tooltip=从书脊可用区域顶部到第一个条纹的空间（像素）。
+config.spellarchives.gui.spine_band_thickness=书脊条纹厚度
+config.spellarchives.gui.spine_band_gap=书脊条纹间隙
+config.spellarchives.gui.spine_band_top_space=书脊条纹顶部空间
