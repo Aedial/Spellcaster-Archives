@@ -691,7 +691,7 @@ public class GuiSpellArchive extends GuiContainer {
         String tierName = spell.getTier().getDisplayNameWithFormatting();
 
         Element element = spell.getElement();
-        String elementName = element.getFormattingCode() + element.getName();
+        String elementName = element.getFormattingCode() + element.getDisplayName();
         ResourceLocation elementIcon = element.getIcon();
 
         int cost = spell.getCost();
