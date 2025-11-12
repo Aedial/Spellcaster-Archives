@@ -10,12 +10,15 @@ config.spellarchives.gui.rightPanel=Right Panel
 chat.spellarchives.usage=Usage: %s
 chat.spellarchives.invalid_number=Invalid number for count: %s
 chat.spellarchives.player_only=This command must be run by a player (to target an archive).
-chat.spellarchives.look_at_archive=Look at an Archive block and run the command again.
-chat.spellarchives.not_archive=That block is not a Spell Archive.
+chat.spellarchives.look_at_archive=Look at an Archives block and run the command again.
+chat.spellarchives.not_archive=That block is not a Spellcaster's Archives.
 chat.spellarchives.no_ebwizardry_book=Wizardry spell book item not found (ebwizardry:spell_book).
 chat.spellarchives.filled_summary=Filled %d spell types (%d/%d) into the archive.
 
 # GUI labels and formats
+config.spellarchives.theme_picker=Theme Picker
+config.spellarchives.apply=Apply
+config.spellarchives.apply_all=Apply All
 gui.spellarchives.prev=<
 gui.spellarchives.next=>
 gui.spellarchives.tier_fallback=Tier %d
@@ -28,9 +31,7 @@ gui.spellarchives.cooldown_fmt=Cooldown: %s
 gui.spellarchives.charge_fmt=Charge: %s
 gui.spellarchives.count_fmt=Count: %d
 gui.spellarchives.config_title=Spellcaster's Archives - Client Config
-config.spellarchives.theme_picker=Theme Picker
-config.spellarchives.apply=Apply
-config.spellarchives.apply_all=Apply All
+tooltip.spellarchives.archive_summary=Content: %1$d Spell types | %2$s total books
 
 # Time unit abbreviations
 timeunit.t=t
