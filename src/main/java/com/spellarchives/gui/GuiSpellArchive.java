@@ -37,6 +37,7 @@ import com.spellarchives.gui.GuiStyle;
 import com.spellarchives.network.MessageExtractBook;
 import com.spellarchives.network.NetworkHandler;
 import com.spellarchives.render.DynamicTextureFactory;
+import com.spellarchives.util.TextUtils;
 import com.spellarchives.tile.TileSpellArchive;
 
 import electroblob.wizardry.Wizardry;
@@ -468,7 +469,7 @@ public class GuiSpellArchive extends GuiContainer {
                 int tabX = gg.gridX + GuiStyle.TAB_OFFSET_X;
 
                 int fill = (0xCC << 24) | (rarityRGB & 0xFFFFFF);
-                int border = 0xFF000000 | darkenColor(rarityRGB, 0.6f);
+                int border = 0xFF000000 | TextUtils.darkenColor(rarityRGB, 0.6f);
                 drawRoundedPanel(tabX, headerY, tabW, tabH, GuiStyle.TAB_RADIUS, fill, border);
                 fontRenderer.drawString(tierPlain, tabX + tabPadX, headerY + GuiStyle.HEADER_TEXT_OFFSET_Y, 0x000000);
             }
@@ -485,7 +486,7 @@ public class GuiSpellArchive extends GuiContainer {
                 Element repElem = repSpell != null ? repSpell.getElement() : null;
                 if (repElem != null) {
                     Style st = repElem.getColour();
-                    elemColor = rgbFromStyle(st, b.elementColor);
+                    elemColor = TextUtils.rgbFromStyle(st, b.elementColor);
                 } else {
                     elemColor = b.elementColor;
                 }
@@ -670,8 +671,9 @@ public class GuiSpellArchive extends GuiContainer {
         WizardData data = WizardData.get(player);
         boolean discovered = (data != null) && data.hasSpellBeenDiscovered(spell);
 
-        // Treat all spells as discovered if player is in creative mode
+        // Treat all spells as discovered if player is in creative mode or discovery mode is off
         if (player != null && player.capabilities != null && player.capabilities.isCreativeMode) discovered = true;
+        if (!Wizardry.settings.discoveryMode) discovered = true;
 
         String headerName;
         ResourceLocation spellIcon = null;
@@ -711,14 +713,16 @@ public class GuiSpellArchive extends GuiContainer {
      * @param color The text color
      */
     private void drawHeader(SpellPresentation p, int x, int y, int color) {
-        String countStr = formatCompactCount(p.count) + "x ";
+        String countStr = TextUtils.formatCompactCount(p.count) + "x ";
         int textStartX = x + GuiStyle.RIGHT_TITLE_TEXT_GAP;
         int rightContentRight = rightPanelX + rightPanelW - GuiStyle.RIGHT_PANEL_INNER_MARGIN;
         int maxHeaderW = Math.max(0, rightContentRight - textStartX);
 
         // Use mixed font renderer for undiscovered spells to show glyphs
+        String header = p.discovered ? p.headerName : "#" + p.headerName;  // mark as glyph text
         FontRenderer fontRendererInstance = p.discovered ? fontRenderer : ClientProxy.mixedFontRenderer;
-        String headerFitted = countStr + trimToWidth(p.headerName, Math.max(0, maxHeaderW - fontRendererInstance.getStringWidth(countStr) - 2));
+        int spaceLeft = Math.max(0, maxHeaderW - fontRendererInstance.getStringWidth(countStr) - 2);
+        String headerFitted = countStr + TextUtils.trimToWidth(fontRendererInstance, header, spaceLeft);
 
         RenderHelper.enableGUIStandardItemLighting();
         itemRender.renderItemAndEffectIntoGUI(p.stack, x, y);
@@ -751,40 +755,6 @@ public class GuiSpellArchive extends GuiContainer {
     }
 
     /**
-     * Formats time in ticks to a human-readable string.
-     * @param ticks Time in ticks
-     * @return A human-readable string representing the time (e.g., "3h", "3.5s", "120t", "instant")
-    */
-    private String formatTimeTicks(int ticks) {
-    if (ticks <= 0) return I18n.format("gui.spellarchives.instant");
-
-        double value = ticks;
-        final int[] timeUnits = {20, 60, 60, 24, Integer.MAX_VALUE};
-        final String[] timeUnitLabels = {
-            I18n.format("timeunit.t"),
-            I18n.format("timeunit.s"),
-            I18n.format("timeunit.m"),
-            I18n.format("timeunit.h"),
-            I18n.format("timeunit.d")
-        };
-        assert timeUnits.length == timeUnitLabels.length;
-
-        int i = 0;
-        for (; i < timeUnits.length; i++) {
-            int unit = timeUnits[i];
-            if (value < unit) break;
-
-            value /= unit;
-        }
-
-        String unit = timeUnitLabels[i];
-        String s = String.format(Locale.ROOT, "%.1f%s", value, unit);
-        if (s.endsWith(".0" + unit)) s = s.substring(0, s.length() - 3) + unit;
-
-        return s;
-    }
-
-    /**
      * Draws the spell properties (cost, cooldown, charge) in the right panel.
      * @param p The spell presentation data
      * @param x The x position to start drawing
@@ -798,8 +768,8 @@ public class GuiSpellArchive extends GuiContainer {
 
         if (p.discovered) {
             costStr = I18n.format("gui.spellarchives.cost_fmt", p.cost, p.isContinuous ? I18n.format("timeunit.s") : "");
-            cooldownStr = I18n.format("gui.spellarchives.cooldown_fmt", formatTimeTicks(p.cooldown));
-            chargeStr = I18n.format("gui.spellarchives.charge_fmt", formatTimeTicks(p.chargeUpTime));
+            cooldownStr = I18n.format("gui.spellarchives.cooldown_fmt", TextUtils.formatTimeTicks(p.cooldown));
+            chargeStr = I18n.format("gui.spellarchives.charge_fmt", TextUtils.formatTimeTicks(p.chargeUpTime));
         }
 
         fontRenderer.drawString(costStr, x, rowY, GuiStyle.DETAIL_TEXT);
@@ -835,10 +805,12 @@ public class GuiSpellArchive extends GuiContainer {
             FontRenderer fontRendererInstance = p.discovered ? fontRenderer : ClientProxy.mixedFontRenderer;
 
             // Sanitize the description string to ensure the ICU line-break iterator won't crash
-            String safeDesc = sanitizeForBreakIterator(desc);
+            String safeDesc = TextUtils.sanitizeForBreakIterator(desc);
 
-            for (String line : wrapTextToWidth(fontRendererInstance, safeDesc, safeMaxW)) {
+            for (String line : TextUtils.wrapTextToWidth(fontRendererInstance, safeDesc, safeMaxW)) {
                 if (rowY + GuiStyle.RIGHT_DESC_LINE_HEIGHT > bottomClamp) break;
+                if (!p.discovered) line = "#" + line;  // mark as glyph text
+
                 fontRendererInstance.drawString(line, x, rowY, color);
                 rowY += GuiStyle.RIGHT_DESC_LINE_HEIGHT;
             }
@@ -891,47 +863,6 @@ public class GuiSpellArchive extends GuiContainer {
     }
 
     /**
-     * Trims a string to fit within a maximum pixel width, appending an ellipsis if trimmed.
-     * @param text The text to trim
-     * @param maxW The maximum width in pixels
-     * @return The trimmed text with ellipsis if necessary
-     */
-    private String trimToWidth(String text, int maxW) {
-        if (fontRenderer.getStringWidth(text) <= maxW) return text;
-
-        String s = text;
-        while (s.length() > 0 && fontRenderer.getStringWidth(s + "…") > maxW) s = s.substring(0, s.length() - 1);
-
-        return s + "…";
-    }
-
-    /**
-     * Formats a count into a compact string (e.g., 1.2k, 3M).
-     * @param n The count to format
-     * @return A compact string representation of the count
-     */
-    private String formatCompactCount(int n) {
-        if (n < 1000) return String.valueOf(n);
-
-        int unitIndex = -1;
-        final String[] units = {
-            I18n.format("numunit.k"),
-            I18n.format("numunit.M"),
-            I18n.format("numunit.B"),
-            I18n.format("numunit.T")
-        };
-        double value = n;
-        while (value >= 1000 && unitIndex + 1 < units.length) { value /= 1000.0; unitIndex++; }
-
-        String fmt = (value < 10)
-            ? String.format(Locale.ROOT, "%.1f", value)
-            : String.format(Locale.ROOT, "%.0f", value);
-        if (fmt.endsWith(".0")) fmt = fmt.substring(0, fmt.length() - 2);
-
-        return fmt + units[unitIndex];
-    }
-
-    /**
      * Draws a grooved row background.
      * @param x the x position of the groove
      * @param y the y position of the groove
@@ -950,7 +881,7 @@ public class GuiSpellArchive extends GuiContainer {
         // subtle drop shadow under the groove for depth (1-2px)
         // use a translucent darker color based on groove shadow
         int shadowAlpha = 0x30; // low alpha
-        int shadowRgb = darkenColor(sh & 0xFFFFFF, 0.6f);
+        int shadowRgb = TextUtils.darkenColor(sh & 0xFFFFFF, 0.6f);
         int shadowCol = (shadowAlpha << 24) | (shadowRgb & 0x00FFFFFF);
         drawRect(x, y + h, x + w, y + h + 2, shadowCol);
     }
@@ -1009,181 +940,5 @@ public class GuiSpellArchive extends GuiContainer {
         // bottom-right
         drawRect(x + w - r + 1, y + h - 1, x + w, y + h, 0x00000000);
         drawRect(x + w - 1, y + h - r + 1, x + w, y + h, 0x00000000);
-    }
-
-    /**
-     * Darkens a color by the given factor.
-     * @param rgb the original color in 0xRRGGBB format
-     * @param factor the darkening factor (0.0 = black, 1.0 = original color)
-     * @return the darkened color in 0xRRGGBB format
-     */
-    private static int darkenColor(int rgb, float factor) {
-        int r = (rgb >> 16) & 0xFF;
-        int g = (rgb >> 8) & 0xFF;
-        int b = rgb & 0xFF;
-
-        r = Math.max(0, Math.min(255, (int)(r * factor)));
-        g = Math.max(0, Math.min(255, (int)(g * factor)));
-        b = Math.max(0, Math.min(255, (int)(b * factor)));
-
-        return (r << 16) | (g << 8) | b;
-    }
-
-    /**
-     * Extracts an RGB color from a Style object, with a fallback if not present.
-     * @param style The Style object to extract the color from
-     * @param fallbackRgb The fallback RGB color if none is found
-     * @return The extracted RGB color or the fallback
-     */
-    private static int rgbFromStyle(Style style, int fallbackRgb) {
-        if (style == null) return fallbackRgb;
-
-        TextFormatting tf = style.getColor();
-        if (tf == null) return fallbackRgb;
-
-        switch (tf) {
-            case BLACK: return 0x000000;
-            case DARK_BLUE: return 0x0000AA;
-            case DARK_GREEN: return 0x00AA00;
-            case DARK_AQUA: return 0x00AAAA;
-            case DARK_RED: return 0xAA0000;
-            case DARK_PURPLE: return 0xAA00AA;
-            case GOLD: return 0xFFAA00;
-            case GRAY: return 0xAAAAAA;
-            case DARK_GRAY: return 0x555555;
-            case BLUE: return 0x5555FF;
-            case GREEN: return 0x55FF55;
-            case AQUA: return 0x55FFFF;
-            case RED: return 0xFF5555;
-            case LIGHT_PURPLE: return 0xFF55FF;
-            case YELLOW: return 0xFFFF55;
-            case WHITE: return 0xFFFFFF;
-            default: return fallbackRgb;
-        }
-    }
-
-    /**
-     * Sanitize a string before passing to ICU/line-break routines.
-     * Removes embedded NULs, replaces unpaired surrogates with the replacement char,
-     * strips most ISO control characters (except newline/tab/CR), and truncates
-     * the string to a reasonable maximum length to avoid internal iterator issues.
-     */
-    private static String sanitizeForBreakIterator(String s) {
-        if (s == null || s.isEmpty()) return "";
-
-        final int MAX_LEN = 4096; // characters
-        StringBuilder sb = new StringBuilder(Math.min(s.length(), MAX_LEN));
-        int len = s.length();
-
-        for (int i = 0; i < len && sb.length() < MAX_LEN; ) {
-            char ch = s.charAt(i);
-
-            // drop embedded NULs
-            if (ch == '\u0000') { i++; continue; }
-
-            if (Character.isHighSurrogate(ch)) {
-                if (i + 1 < len && Character.isLowSurrogate(s.charAt(i + 1))) {
-                    int cp = Character.codePointAt(s, i);
-                    sb.appendCodePoint(cp);
-                    i += 2;
-                } else {
-                    sb.append('\uFFFD');
-                    i++;
-                }
-            } else if (Character.isLowSurrogate(ch)) {
-                // unpaired low surrogate
-                sb.append('\uFFFD');
-                i++;
-            } else {
-                // skip most ISO control characters except newline/carriage return/tab
-                if (ch == '\n' || ch == '\r' || ch == '\t' || !Character.isISOControl(ch)) sb.append(ch);
-                i++;
-            }
-        }
-
-        return sb.toString();
-    }
-
-    /**
-     * Simple word-wrap that uses the provided FontRenderer to measure widths.
-     * This avoids ICU/BreakIterator usage which can sometimes fail on malformed input.
-     */
-    private static List<String> wrapTextToWidth(FontRenderer fr, String text, int maxWidth) {
-        List<String> lines = new ArrayList<>();
-        if (text == null || text.isEmpty() || maxWidth <= 0) return lines;
-
-        // Normalize newlines first
-        String[] paragraphs = text.split("\\r?\\n");
-        for (int pi = 0; pi < paragraphs.length; pi++) {
-            String paragraph = paragraphs[pi].trim();
-            if (paragraph.isEmpty()) {
-                lines.add("");
-                continue;
-            }
-
-            StringBuilder cur = new StringBuilder();
-            String[] words = paragraph.split("\\s+");
-            for (int wi = 0; wi < words.length; wi++) {
-                String w = words[wi];
-
-                if (cur.length() == 0) {
-                    // Start new line
-                    if (fr.getStringWidth(w) <= maxWidth) {
-                        cur.append(w);
-                    } else {
-                        // word longer than line: break it
-                        int start = 0;
-                        while (start < w.length()) {
-                            int end = start + 1;
-                            while (end <= w.length() && fr.getStringWidth(w.substring(start, end)) <= maxWidth) end++;
-                            // back up one if we ran past
-                            if (end - 1 <= start) {
-                                // single char doesn't fit (!) -> force char
-                                lines.add(w.substring(start, Math.min(w.length(), start + 1)));
-                                start += 1;
-                            } else {
-                                lines.add(w.substring(start, end - 1));
-                                start = end - 1;
-                            }
-                        }
-                    }
-                } else {
-                    // try adding with a space
-                    String withSpace = cur.toString() + " " + w;
-                    if (fr.getStringWidth(withSpace) <= maxWidth) {
-                        cur.append(" ").append(w);
-                    } else {
-                        // flush current line
-                        lines.add(cur.toString());
-                        cur.setLength(0);
-
-                        // start new line with word (or broken word)
-                        if (fr.getStringWidth(w) <= maxWidth) {
-                            cur.append(w);
-                        } else {
-                            int start = 0;
-                            while (start < w.length()) {
-                                int end = start + 1;
-                                while (end <= w.length() && fr.getStringWidth(w.substring(start, end)) <= maxWidth) end++;
-                                if (end - 1 <= start) {
-                                    lines.add(w.substring(start, Math.min(w.length(), start + 1)));
-                                    start += 1;
-                                } else {
-                                    lines.add(w.substring(start, end - 1));
-                                    start = end - 1;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (cur.length() > 0) lines.add(cur.toString());
-
-            // Preserve paragraph breaks (blank line) except after last paragraph
-            if (pi < paragraphs.length - 1) lines.add("");
-        }
-
-        return lines;
     }
 }
