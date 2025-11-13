@@ -47,8 +47,8 @@ numunit.B=B
 numunit.T=T
 
 # Config property descriptions shown in the in-game config GUI
-config.spellarchives.width_ratio_desc=Fraction of screen width used by the archive window (0 - 100%).
-config.spellarchives.height_ratio_desc=Fraction of screen height used by the archive window (0 - 100%).
+config.spellarchives.width_ratio_desc=Fraction of screen width used by the archive window (0 - 100%%).
+config.spellarchives.height_ratio_desc=Fraction of screen height used by the archive window (0 - 100%%).
 config.spellarchives.min_width_desc=Minimum width of the archive window in pixels.
 config.spellarchives.min_height_desc=Minimum height of the archive window in pixels.
 
@@ -60,7 +60,7 @@ config.spellarchives.row_gap_desc=Vertical gap in pixels between rows of spines.
 config.spellarchives.margin_desc=Outer margin around the archive window (pixels).
 config.spellarchives.panel_radius_desc=Rounded corner radius of the main window background (pixels).
 config.spellarchives.right_panel_min_width_desc=Minimum width of the right details panel (pixels).
-config.spellarchives.right_panel_ratio_desc=Fraction of the window width dedicated to the right details panel (0 - 100%).
+config.spellarchives.right_panel_ratio_desc=Fraction of the window width dedicated to the right details panel (0 - 100%%).
 config.spellarchives.right_panel_radius_desc=Rounded corner radius of the right panel background (pixels).
 config.spellarchives.grid_inner_padding_desc=Inner padding between left panel edge and the content grid (pixels).
 config.spellarchives.bottom_bar_height_desc=Reserved height at the bottom for navigation controls (pixels).
@@ -72,7 +72,7 @@ config.spellarchives.spine_enable_noise_desc=Add subtle per-pixel noise to spine
 config.spellarchives.spine_enable_bands_desc=Enable thin decorative horizontal bands on spines.
 config.spellarchives.spine_embed_icon_desc=Embed the element icon directly into the spine texture instead of drawing it as an overlay.
 
-config.spellarchives.screen_darken_desc=Amount to darken the world behind the GUI (0% = no darkening, 100% = fully black). Range: 0 - 100%
+config.spellarchives.screen_darken_desc=Amount to darken the world behind the GUI (0%% = no darkening, 100%% = fully black). Range: 0 - 100%%
 
 config.spellarchives.left_panel_fill_desc=Left panel (main window) fill color (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFFE5E5E5
 config.spellarchives.left_panel_border_desc=Left panel (main window) border color (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFFB0B0B0
@@ -85,8 +85,8 @@ config.spellarchives.groove_base_desc=Base fill color for shelf grooves (hex). A
 config.spellarchives.groove_hl_desc=Top highlight color for shelf grooves (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFFFFFFFF
 config.spellarchives.groove_sh_desc=Bottom shadow color for shelf grooves (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFF6E6E6E
 
-config.spellarchives.panel_gradient_desc=Strength of the vertical gradient applied to themed panel backgrounds (0 - 100%).
-config.spellarchives.outer_shadow_desc=Strength of subtle inner/outer shadow applied to themed panels (0 - 100%).
+config.spellarchives.panel_gradient_desc=Strength of the vertical gradient applied to themed panel backgrounds (0 - 100%%).
+config.spellarchives.outer_shadow_desc=Strength of subtle inner/outer shadow applied to themed panels (0 - 100%%).
 
 # Navigation
 config.spellarchives.nav_button_size_desc=Size of the prev/next navigation buttons (pixels).
@@ -170,7 +170,7 @@ config.spellarchives.gui.default_gui_width=Default GUI width
 config.spellarchives.gui.default_gui_height=Default GUI height
 config.spellarchives.outer_shadow_strength=Outer shadow strength (detailed)
 config.spellarchives.gui.outer_shadow_strength=Outer shadow strength (detailed)
-config.spellarchives.gui.outer_shadow_strength.tooltip=Strength of subtle inner/outer shadow applied to themed panels (0-100%).
+config.spellarchives.gui.outer_shadow_strength.tooltip=Strength of subtle inner/outer shadow applied to themed panels (0-100%%).
 config.spellarchives.gui.margin=Window outer margin
 config.spellarchives.gui.panel_radius=Main panel corner radius
 config.spellarchives.gui.right_panel_min_width=Right panel minimum width
@@ -183,8 +183,8 @@ config.spellarchives.gui.nav_button_size=Navigation button size
 config.spellarchives.gui.arrows_y_offset=Navigation row Y-offset
 
 # Tooltips (Forge GUI reads <languageKey>.tooltip when present)
-config.spellarchives.gui.width_ratio.tooltip=Fraction of screen width used by the archive window (0 - 100%).
-config.spellarchives.gui.height_ratio.tooltip=Fraction of screen height used by the archive window (0 - 100%).
+config.spellarchives.gui.width_ratio.tooltip=Fraction of screen width used by the archive window (0 - 100%%).
+config.spellarchives.gui.height_ratio.tooltip=Fraction of screen height used by the archive window (0 - 100%%).
 config.spellarchives.gui.min_width.tooltip=Minimum width of the archive window in pixels.
 config.spellarchives.gui.min_height.tooltip=Minimum height of the archive window in pixels.
 config.spellarchives.gui.cell_w.tooltip=Width in pixels of a single book spine cell on the left panel.
@@ -193,7 +193,7 @@ config.spellarchives.gui.row_gap.tooltip=Vertical gap in pixels between rows of 
 config.spellarchives.gui.margin.tooltip=Outer margin around the archive window (pixels).
 config.spellarchives.gui.panel_radius.tooltip=Rounded corner radius of the main window background (pixels).
 config.spellarchives.gui.right_panel_min_width.tooltip=Minimum width of the right details panel (pixels).
-config.spellarchives.gui.right_panel_ratio.tooltip=Fraction of the window width dedicated to the right details panel (0 - 100%).
+config.spellarchives.gui.right_panel_ratio.tooltip=Fraction of the window width dedicated to the right details panel (0 - 100%%).
 config.spellarchives.gui.right_panel_radius.tooltip=Rounded corner radius of the right panel background (pixels).
 config.spellarchives.gui.grid_inner_padding.tooltip=Inner padding between left panel edge and the content grid (pixels).
 config.spellarchives.gui.bottom_bar_height.tooltip=Reserved height at the bottom for navigation controls (pixels).
@@ -203,7 +203,7 @@ config.spellarchives.gui.spine_enable_tilt.tooltip=Enable a slight asymmetric ti
 config.spellarchives.gui.spine_enable_noise.tooltip=Add subtle per-pixel noise to spine textures.
 config.spellarchives.gui.spine_enable_bands.tooltip=Enable thin decorative horizontal bands on spines.
 config.spellarchives.gui.spine_embed_icon.tooltip=Embed the element icon directly into the spine texture instead of drawing it as an overlay.
-config.spellarchives.gui.screen_darken_factor.tooltip=Amount to darken the world behind the GUI (0 = no darkening, 1 = fully black).
+config.spellarchives.gui.screen_darken_factor.tooltip=Amount to darken the world behind the GUI (0%% = no darkening, 100%% = fully black). Range: 0 - 100%%.
 config.spellarchives.gui.left_panel_fill.tooltip=Left panel (main window) fill color (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
 config.spellarchives.gui.left_panel_border.tooltip=Left panel (main window) border color (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
 config.spellarchives.gui.right_panel_fill.tooltip=Right details panel background fill color (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
@@ -215,8 +215,8 @@ config.spellarchives.gui.groove_hl.tooltip=Top highlight color for shelf grooves
 config.spellarchives.gui.groove_sh.tooltip=Bottom shadow color for shelf grooves (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
 config.spellarchives.gui.left_panel_theme.tooltip=Choose a preset theme for the left (main) panel. Selecting a theme overwrites explicit colors.
 config.spellarchives.gui.right_panel_theme.tooltip=Choose a preset theme for the right details panel. Selecting a theme overwrites explicit colors.
-config.spellarchives.gui.panel_gradient.tooltip=Strength of the vertical gradient applied to themed panel backgrounds (0 - 100%).
-config.spellarchives.gui.outer_shadow.tooltip=Strength of subtle inner/outer shadow applied to themed panels (0 - 100%).
+config.spellarchives.gui.panel_gradient.tooltip=Strength of the vertical gradient applied to themed panel backgrounds (0 - 100%%).
+config.spellarchives.gui.outer_shadow.tooltip=Strength of subtle inner/outer shadow applied to themed panels (0 - 100%%).
 config.spellarchives.gui.default_gui_width.tooltip=Base width of the archive window when ratios would produce a smaller width (pixels).
 config.spellarchives.gui.default_gui_height.tooltip=Base height of the archive window when ratios would produce a smaller height (pixels).
 config.spellarchives.gui.nav_button_size.tooltip=Size of the prev/next navigation buttons (pixels).
