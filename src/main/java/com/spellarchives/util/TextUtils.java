@@ -211,17 +211,77 @@ public final class TextUtils {
 
             String[] words = p.split(" ");
             StringBuilder cur = new StringBuilder();
+
             for (String w : words) {
-                if (cur.length() == 0) {
-                    cur.append(w);
-                } else {
-                    String test = cur.toString() + " " + w;
-                    if (fr.getStringWidth(test) <= maxWidth) {
-                        cur.append(" ").append(w);
-                    } else {
-                        lines.add(cur.toString());
-                        cur.setLength(0);
+                if (w.isEmpty()) continue;  // Skip multiple spaces
+
+                int wordWidth = fr.getStringWidth(w);
+                if (wordWidth <= maxWidth) {
+                    // Word fits on its own.
+                    if (cur.length() == 0) {
                         cur.append(w);
+                    } else {
+                        String test = cur.toString() + " " + w;
+                        if (fr.getStringWidth(test) <= maxWidth) {
+                            cur.append(" ").append(w);
+                        } else {
+                            lines.add(cur.toString());
+                            cur.setLength(0);
+                            cur.append(w);
+                        }
+                    }
+                } else {
+                    // Word itself is too long: split into chunks that fit maxWidth.
+                    int start = 0;
+                    int wlen = w.length();
+
+                    while (start < wlen) {
+                        if (cur.length() > 0) {
+                            // Try to append as many chars from the word to the current line as will fit.
+                            int end = start;
+                            for (int e = start; e < wlen; e++) {
+                                String test = cur.toString() + w.substring(start, e + 1);
+                                if (fr.getStringWidth(test) <= maxWidth) {
+                                    end = e + 1;
+                                } else break;
+                            }
+
+                            if (end == start) {
+                                // Can't fit even a single additional char on the current line: flush it.
+                                lines.add(cur.toString());
+                                cur.setLength(0);
+                                continue;
+                            }
+
+                            cur.append(w.substring(start, end));
+                            start = end;
+
+                            // After filling the current line, flush it so further chunks start on a new line.
+                            lines.add(cur.toString());
+                            cur.setLength(0);
+                        } else {
+                            // Current line is empty: build the largest chunk starting at 'start' that fits.
+                            int end = start + 1;
+                            for (int e = start + 1; e <= wlen; e++) {
+                                String piece = w.substring(start, e);
+                                if (fr.getStringWidth(piece) <= maxWidth) {
+                                    end = e;
+                                } else break;
+                            }
+
+                            // Ensure progress: if a single char is wider than maxWidth, force one char.
+                            if (end == start) end = start + 1;
+
+                            String piece = w.substring(start, end);
+                            cur.append(piece);
+                            start = end;
+
+                            // If the chunk filled the line exactly (or can't accept more), flush it now.
+                            if (fr.getStringWidth(cur.toString()) >= maxWidth) {
+                                lines.add(cur.toString());
+                                cur.setLength(0);
+                            }
+                        }
                     }
                 }
             }
