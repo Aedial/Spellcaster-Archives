@@ -8,7 +8,7 @@ import com.spellarchives.client.ClientConfig;
 
 
 /**
- * Centralized GUI style constants used throughout the Spell Archive screens.
+ * Centralized GUI style constants used throughout the Spellcaster's Archives screens.
  * Every constant documents exactly what it controls and where it is applied.
  */
 public final class GuiStyle {
@@ -20,8 +20,8 @@ public final class GuiStyle {
     // -- Backing fields (mutable via config reload). Public getters are used by code.
     private static int DEFAULT_GUI_WIDTH_v = 248;           // Base width if screen ratio calc is smaller
     private static int DEFAULT_GUI_HEIGHT_v = 220;          // Base height if screen ratio calc is smaller
-    private static float WIDTH_RATIO_v = 0.5f;              // Archive window width = 50% of screen width
-    private static float HEIGHT_RATIO_v = 0.75f;            // Archive window height = 75% of screen height
+    private static float WIDTH_RATIO_v = 0.5f;              // Archives window width = 50% of screen width
+    private static float HEIGHT_RATIO_v = 0.75f;            // Archives window height = 75% of screen height
     private static int MIN_WIDTH_v = 220;                   // Minimum archive window width
     private static int MIN_HEIGHT_v = 180;                  // Minimum archive window height
 

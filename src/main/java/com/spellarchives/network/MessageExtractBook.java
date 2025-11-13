@@ -19,7 +19,7 @@ import com.spellarchives.tile.TileSpellArchive;
 
 /**
  * Client->server request to extract a specific number of spell books of a given key from
- * a Spell Archive tile. The server validates the tile and key, removes the books, and
+ * a Spellcaster's Archives tile. The server validates the tile and key, removes the books, and
  * transfers them to the player's inventory (dropping if full).
  */
 public class MessageExtractBook implements IMessage {

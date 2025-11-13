@@ -16,6 +16,7 @@ import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.util.ResourceLocation;
 
 import com.spellarchives.gui.GuiStyle;
+import com.spellarchives.util.TextUtils;
 
 
 /**
@@ -111,19 +112,19 @@ public final class DynamicTextureFactory {
                 float shade = GuiStyle.SPINE_ENABLE_CURVATURE
                     ? (GuiStyle.SPINE_CENTER_BRIGHTEN - GuiStyle.SPINE_EDGE_FACTOR * dist)
                     : 1.0f;
-                int rgb = darkenColor(baseRgb, shade);
+                int rgb = TextUtils.darkenColor(baseRgb, shade);
 
                 // Subtle horizontal roll-off towards top/bottom
                 float ny = (y + 0.5f) / h;
                 float edgeY = Math.min(ny, 1f - ny) * 2f; // 0 at edges, 1 at center
                 float vshade = GuiStyle.SPINE_VSHADE_BASE + GuiStyle.SPINE_VSHADE_RANGE * edgeY; // darker near top/bottom
-                rgb = darkenColor(rgb, vshade);
+                rgb = TextUtils.darkenColor(rgb, vshade);
 
                 // Per-pixel noise to break uniformity (deterministic)
                 int ns = s5 + x * 7349 + y * 1931;
                 ns = next.applyAsInt(ns);
                 float n = (rf.apply(ns) - 0.5f) * 2f; // -1..1
-                if (noiseAmp != 0f) rgb = darkenColor(rgb, 1f + n * noiseAmp);
+                if (noiseAmp != 0f) rgb = TextUtils.darkenColor(rgb, 1f + n * noiseAmp);
 
                 pixels[y * w + x] = 0xFF000000 | (rgb & 0xFFFFFF);
             }
@@ -137,7 +138,7 @@ public final class DynamicTextureFactory {
                     if (yy >= 0 && yy < h) {
                         int idx = yy * w + x;
                         int rgb = pixels[idx] & 0xFFFFFF;
-                        pixels[idx] = 0xFF000000 | (darkenColor(rgb, GuiStyle.SPINE_BAND1_DARKEN) & 0xFFFFFF);
+                        pixels[idx] = 0xFF000000 | (TextUtils.darkenColor(rgb, GuiStyle.SPINE_BAND1_DARKEN) & 0xFFFFFF);
                     }
                 }
             }
@@ -150,7 +151,7 @@ public final class DynamicTextureFactory {
                     if (yy >= 0 && yy < h) {
                         int idx = yy * w + x;
                         int rgb = pixels[idx] & 0xFFFFFF;
-                        pixels[idx] = 0xFF000000 | (darkenColor(rgb, GuiStyle.SPINE_BAND2_DARKEN) & 0xFFFFFF);
+                        pixels[idx] = 0xFF000000 | (TextUtils.darkenColor(rgb, GuiStyle.SPINE_BAND2_DARKEN) & 0xFFFFFF);
                     }
                 }
             }
@@ -218,25 +219,6 @@ public final class DynamicTextureFactory {
     }
 
     /**
-     * Multiplies the RGB components by the given factor, clamping the result.
-     *
-     * @param rgb Input RGB color (no alpha).
-     * @param factor Multiplicative factor.
-     * @return Adjusted RGB color.
-     */
-    private static int darkenColor(int rgb, float factor) {
-        int r = (rgb >> 16) & 0xFF;
-        int g = (rgb >> 8) & 0xFF;
-        int b = rgb & 0xFF;
-
-        r = Math.max(0, Math.min(255, (int)(r * factor)));
-        g = Math.max(0, Math.min(255, (int)(g * factor)));
-        b = Math.max(0, Math.min(255, (int)(b * factor)));
-
-        return (r << 16) | (g << 8) | b;
-    }
-
-    /**
      * Generates (or retrieves from cache) a simple vertical gradient background texture.
      *
      * @param w Width in pixels.
@@ -245,6 +227,7 @@ public final class DynamicTextureFactory {
      */
     public static ResourceLocation getOrCreatePanelBg(int w, int h) {
         checkRevision();
+
         String key = "bg_" + w + "x" + h + "_rev" + GuiStyle.CONFIG_REVISION;
         ResourceLocation existing = bgCache.get(key);
         if (existing != null) return existing;
@@ -258,6 +241,7 @@ public final class DynamicTextureFactory {
             int g = (int)((((topColor >> 8) & 0xFF) * (1-t)) + (((bottomColor >> 8) & 0xFF) * t));
             int b = (int)((((topColor) & 0xFF) * (1-t)) + (((bottomColor) & 0xFF) * t));
             int col = (0xFF << 24) | (r << 16) | (g << 8) | b;
+
             for (int x = 0; x < w; x++) pixels[y * w + x] = col;
         }
 

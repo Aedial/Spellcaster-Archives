@@ -12,7 +12,7 @@ buildscript {
 
 apply plugin: 'net.minecraftforge.gradle.forge'
 
-version = "0.2.1"
+version = "0.2.2"
 group = "com.spellarchives"
 archivesBaseName = "spellarchives"
 
@@ -59,7 +59,6 @@ processResources {
         exclude 'mcmod.info'
     }
 }
-
 
 
 // Create uppercase-case duplicates of language files in the built resources directory

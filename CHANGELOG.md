@@ -7,6 +7,19 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Keep a Changelog: https://keepachangelog.com/en/1.1.0/
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
+## [0.2.2] - 2025-11-12
+### Added
+- Add block rotation and valid rotation queries in `BlockSpellArchive`.
+- Add dismantling support via wrench tools (e.g., Crescent Hammer).
+
+### Fixed
+- Fix null tile entity issue when moving the Spell Archives.
+- Fix glyphs rendering when spell is undiscovered.
+- Fix discoveryMode not being taken into account.
+- Fix unlocalized text for elements.
+- Fix blockState changes (rotation) wiping out the tile entity data.
+
+
 ## [0.2.1] - 2025-11-11
 ### Added
 - Add crafting recipe for Spellcaster's Archive:
@@ -27,6 +40,7 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
   - Remove stack limit on lookup and extraction.
   - Remove key deletion on slot exhaustion, to keep the record consistent across ticks.
 - Optimize slot-aware logic (extraction, lookup) to avoid O(n) behavior.
+
 
 ## [0.2.0] - 2025-11-11
 ### Added
@@ -73,8 +87,6 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Automatic dynamic texture cache invalidation tied to config revision.
 
 
-
-
 ## [0.1.0] - 2025-10-19
 
 ### Added
@@ -86,5 +98,3 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Custom networking (MessageExtractBook) for precise extraction by key
 - Debug command `/archives fill <count|"max">` ray-tracing the targeted archive and reporting with colored chat
 - Centralized GUI constants via `GuiStyle`
-
-[0.1.0]: https://example.com/releases/tag/v0.1.0
