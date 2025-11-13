@@ -13,7 +13,7 @@ chat.spellarchives.player_only=此命令必须由玩家执行（以定位档案�
 chat.spellarchives.look_at_archive=注视一个档案馆方块并再次执行此命令。
 chat.spellarchives.not_archive=该方块不是施法者档案馆。
 chat.spellarchives.no_ebwizardry_book=未找到巫术学的法术书物品（ebwizardry:spell_book）。
-chat.spellarchives.filled_summary=已向档案馆填充了%d种法术类型（%d/%d）。
+chat.spellarchives.filled_summary=已向档案馆填充了%d种法术（%d/%d）。
 
 # GUI labels and formats
 config.spellarchives.theme_picker=主题选择器
