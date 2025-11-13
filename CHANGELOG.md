@@ -7,7 +7,7 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Keep a Changelog: https://keepachangelog.com/en/1.1.0/
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
-## [0.2.3] - 2025-11-13
+## [0.2.4] - 2025-11-13
 ### Added
 - Add dumping of all spells in inventory to the Spellcaster's Archives when holding right-click.
 
