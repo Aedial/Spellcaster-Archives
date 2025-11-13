@@ -21,6 +21,8 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.NonNullList;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.fml.relauncher.Side;
@@ -38,7 +40,7 @@ import com.spellarchives.SpellArchives;
 
 
 /**
- * Tile entity for the Spell Archive block. This tile stores an effectively-unbounded
+ * Tile entity for the Spellcaster's Archives block. This tile stores an effectively-unbounded
  * collection of Electroblob's Wizardry spell books, collapsing identical books into
  * a single logical entry keyed by the book's registry name and metadata. The
  * inventory is exposed through capabilities:
@@ -694,7 +696,7 @@ public class TileSpellArchive extends TileEntity {
             }
 
             if (unmappedCount > 0) {
-                SpellArchives.LOGGER.warn("Spell Archive at " + pos + " failed to map " + unmappedCount + " spell(s) from removed mods:");
+                SpellArchives.LOGGER.warn("Spellcaster's Archives at " + pos + " failed to map " + unmappedCount + " spell(s) from removed mods:");
                 for (Map.Entry<String, Long> entry : unmappedByMod.entrySet()) {
                     SpellArchives.LOGGER.warn("  - Mod '" + entry.getKey() + "': " + entry.getValue() + " book(s)");
                 }
@@ -757,6 +759,21 @@ public class TileSpellArchive extends TileEntity {
      */
     public void suppressExternalCaps() {
         this.suppressCap = true;
+    }
+
+    /**
+     * Ensure the tile entity is NOT refreshed (re-created) on mere blockstate/property changes
+     * like rotations; only refresh if the actual block instance changes.
+     * 
+     * @param world The world.
+     * @param pos The block position.
+     * @param oldState The old block state.
+     * @param newState The new block state.
+     * @return True to refresh (remove/recreate), false to keep existing tile.
+     */
+    @Override
+    public boolean shouldRefresh(World world, BlockPos pos, IBlockState oldState, IBlockState newState) {
+        return oldState.getBlock() != newState.getBlock();
     }
 
     // ---- Client sync ----

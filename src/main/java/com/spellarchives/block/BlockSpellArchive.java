@@ -1,5 +1,7 @@
 package com.spellarchives.block;
 
+import java.util.ArrayList;
+
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.properties.PropertyDirection;
@@ -23,19 +25,21 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
+import cofh.api.block.IDismantleable;
+
 import com.spellarchives.SpellArchives;
 import com.spellarchives.client.GuiHandler;
 import com.spellarchives.tile.TileSpellArchive;
 
 
 /**
- * Block for the Spell Archive. Holds a {@link TileSpellArchive} that aggregates spell
- * books. Presents a model with variable stripes based on the number of distinct spell
+ * Block for the Spellcaster's Archives. Holds a {@link TileSpellArchive} that aggregates
+ * spell books. Presents a model with variable stripes based on the number of distinct spell
  * types stored. Right-click inserts held spell books or opens the GUI when an invalid
  * item or empty hand is used.
  */
 @SuppressWarnings("deprecation")
-public class BlockSpellArchive extends BlockContainer {
+public class BlockSpellArchive extends BlockContainer implements IDismantleable {
 
     // Facing direction of the block
     public static final PropertyDirection FACING = PropertyDirection.create("facing", EnumFacing.Plane.HORIZONTAL);
@@ -53,7 +57,7 @@ public class BlockSpellArchive extends BlockContainer {
     }
 
     /**
-     * Creates the Spell Archive tile for this block. The world and metadata are part of the
+     * Creates the Spellcaster's Archives tile for this block. The world and metadata are part of the
      * vanilla signature but aren't used here since the tile has no variant state at creation.
      *
      * @param worldIn The world that will contain the tile (not used).
@@ -75,6 +79,45 @@ public class BlockSpellArchive extends BlockContainer {
     @Override
     public EnumBlockRenderType getRenderType(IBlockState state) {
         return EnumBlockRenderType.MODEL;
+    }
+
+    /**
+     * Advertise that this block supports horizontal rotations via tools. Returning the four
+     * horizontal faces allows wrenches to attempt rotation rather than remove/re-place.
+     * 
+     * @param world World containing the block (not used).
+     * @param pos Position of the block (not used).
+     */
+    @Override
+    public EnumFacing[] getValidRotations(World world, BlockPos pos) {
+        return new EnumFacing[]{EnumFacing.NORTH, EnumFacing.SOUTH, EnumFacing.WEST, EnumFacing.EAST};
+    }
+
+    /**
+     * Rotate the block to the face that was clicked (i.e., facing the player). If the top or bottom
+     * is clicked, the block rotates 90° clockwise from its current orientation.
+     *
+     * @param world The world containing the block.
+     * @param pos Position of the block to rotate.
+     * @param side The side the player clicked on.
+     * @return Always true to indicate success.
+     */
+    @Override
+    public boolean rotateBlock(World world, BlockPos pos, EnumFacing side) {
+        if (!world.isRemote) {
+            // if we wrench the top or bottom, rotate 90°
+            if (side.getAxis().isVertical()) side = world.getBlockState(pos).getValue(FACING).rotateY().getOpposite();
+            IBlockState rotated = world.getBlockState(pos).withProperty(FACING, side.getOpposite());
+
+            world.setBlockState(pos, rotated, 3);
+            TileEntity te = world.getTileEntity(pos);
+            if (te != null) te.markDirty();
+
+            // Use identical old/new states here to force a TE description packet with getUpdateTag()
+            world.notifyBlockUpdate(pos, rotated, rotated, 3);
+        }
+
+        return true;
     }
 
     /**
@@ -205,6 +248,54 @@ public class BlockSpellArchive extends BlockContainer {
         }
     }
 
+    // ---- CoFH dismantle support ----
+    @Override
+    public boolean canDismantle(World world, BlockPos pos, IBlockState state, EntityPlayer player) {
+        return true;
+    }
+
+    @Override
+    public ArrayList<ItemStack> dismantleBlock(World world, BlockPos pos, IBlockState state, EntityPlayer player, boolean returnDrops) {
+        ArrayList<ItemStack> drops = new ArrayList<>();
+
+        TileEntity te = world.getTileEntity(pos);
+
+        ItemStack stack = new ItemStack(Item.getItemFromBlock(this));
+        if (te instanceof TileSpellArchive) {
+            NBTTagCompound tag = new NBTTagCompound();
+            te.writeToNBT(tag);
+
+            NBTTagCompound blockTag = new NBTTagCompound();
+            blockTag.setTag("BlockEntityTag", tag);
+            stack.setTagCompound(blockTag);
+
+            ((TileSpellArchive) te).suppressExternalCaps();
+        }
+
+        drops.add(stack.copy());
+
+        if (!world.isRemote) {
+            if (returnDrops && player != null) {
+                boolean added = player.inventory.addItemStackToInventory(stack.copy());
+                if (!added) spawnAsEntity(world, pos, stack.copy());
+            } else {
+                spawnAsEntity(world, pos, stack.copy());
+            }
+
+            world.setBlockToAir(pos);
+            if (world instanceof WorldServer) {
+                WorldServer ws = (WorldServer) world;
+                ws.addScheduledTask(() -> {
+                    if (ws.getBlockState(pos).getBlock() == this) ws.setBlockToAir(pos);
+                });
+            } else {
+                world.setBlockToAir(pos);
+            }
+        }
+
+        return drops;
+    }
+
     /**
      * Delay block removal until harvestBlock so the tile entity is still present
      * when we serialize it into the dropped stack. This improves resilience with
@@ -237,7 +328,7 @@ public class BlockSpellArchive extends BlockContainer {
      */
     @Override
     public IBlockState getStateForPlacement(World world, BlockPos pos, EnumFacing facing, float hitX, float hitY, float hitZ, int meta, EntityLivingBase placer, EnumHand hand) {
-        return this.getDefaultState().withProperty(FACING, placer.getHorizontalFacing());
+        return this.getDefaultState().withProperty(FACING, placer.getHorizontalFacing().getOpposite());
     }
 
     /**
@@ -298,7 +389,7 @@ public class BlockSpellArchive extends BlockContainer {
      *
      * @param state The incoming state prior to applying BOOKS.
      * @param world Read-only world access used to look up the tile at pos.
-     * @param pos Position of the Spell Archive tile to query.
+     * @param pos Position of the Spellcaster's Archives tile to query.
      * @return Either the original state (if unchanged) or a copy with BOOKS updated.
      */
     @Override
