@@ -1,5 +1,6 @@
 package com.spellarchives.block;
 
+import java.time.Instant;
 import java.util.ArrayList;
 
 import net.minecraft.block.BlockContainer;
@@ -48,6 +49,8 @@ public class BlockSpellArchive extends BlockContainer implements IDismantleable 
 
     // Not a full 16x16x16 cube; model uses 1..15 bounds
     private static final AxisAlignedBB AABB = new AxisAlignedBB(1 / 16.0D, 1 / 16.0D, 1 / 16.0D, 15 / 16.0D, 15 / 16.0D, 15 / 16.0D);
+
+    private long timeLastActivated = 0L;
 
     public BlockSpellArchive() {
         super(Material.WOOD);
@@ -172,9 +175,10 @@ public class BlockSpellArchive extends BlockContainer implements IDismantleable 
     }
 
     /**
-     * Handles right-click activation. If the player is holding a spell book, the server inserts
-     * it into the archive; otherwise the GUI is opened. Client side returns early and lets the
-     * server perform the action.
+     * Handles right-click activation.
+     * If the player is holding right-click, inserts all spell books from the player's inventory.
+     * If the player is holding a spell book, the server inserts it into the archive.
+     * Otherwise the GUI is opened. Client side returns early and lets the server perform the action.
      *
      * @param worldIn Interaction world; used to check side and open the GUI on the server.
      * @param pos Position of the archive; used to locate the tile and open the GUI.
@@ -196,9 +200,21 @@ public class BlockSpellArchive extends BlockContainer implements IDismantleable 
             TileSpellArchive archive = (TileSpellArchive) te;
 
             ItemStack held = playerIn.getHeldItem(hand);
-            if (!held.isEmpty() && archive.isSpellBook(held)) {
+
+            // If the player is holding right-click, insert all spell books from the player's inventory.
+            // Otherwise, insert only the held stack. Hold right-click within 500ms to bulk insert.
+            if (Instant.now().toEpochMilli() - timeLastActivated < 500L) {
+                for (int i = 0; i < playerIn.inventory.getSizeInventory(); i++) {
+                    ItemStack slotStack = playerIn.inventory.getStackInSlot(i);
+                    if (slotStack != null && !slotStack.isEmpty() && archive.isSpellBook(slotStack)) {
+                        ItemStack remaining = archive.addBooks(slotStack);
+                        playerIn.inventory.setInventorySlotContents(i, remaining);
+                    }
+                }
+            } else if (held != null && !held.isEmpty() && archive.isSpellBook(held)) {
                 ItemStack remaining = archive.addBooks(held);
                 if (remaining != held) playerIn.setHeldItem(hand, remaining);
+                timeLastActivated = Instant.now().toEpochMilli();
             } else {
                 playerIn.openGui(SpellArchives.instance, GuiHandler.GUI_SPELL_ARCHIVE, worldIn, pos.getX(), pos.getY(), pos.getZ());
             }
