@@ -699,8 +699,6 @@ public class GuiSpellArchive extends GuiContainer {
         int chargeUpTime = spell.getChargeup();
         int cooldown = spell.getCooldown();
 
-        if (isContinuous) cost = cost * 20; // per second
-
         return new SpellPresentation(toShow, spell, discovered, headerName, spellIcon, description, tierName,
                      elementName, elementIcon, effectiveCount, cost, isContinuous, chargeUpTime, cooldown);
     }
@@ -767,7 +765,7 @@ public class GuiSpellArchive extends GuiContainer {
         String chargeStr = I18n.format("gui.spellarchives.charge_unknown");
 
         if (p.discovered) {
-            costStr = I18n.format("gui.spellarchives.cost_fmt", p.cost, p.isContinuous ? I18n.format("timeunit.s") : "");
+            costStr = I18n.format("gui.spellarchives.cost_fmt", p.cost, p.isContinuous ? "/" + I18n.format("timeunit.s") : "");
             cooldownStr = I18n.format("gui.spellarchives.cooldown_fmt", TextUtils.formatTimeTicks(p.cooldown));
             chargeStr = I18n.format("gui.spellarchives.charge_fmt", TextUtils.formatTimeTicks(p.chargeUpTime));
         }
