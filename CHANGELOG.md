@@ -7,13 +7,24 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Keep a Changelog: https://keepachangelog.com/en/1.1.0/
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
+## [0.2.3] - 2025-11-13
+### Added
+- Add dumping of all spells in inventory to the Spellcaster's Archives when holding right-click.
+
+### Fixed
+- Fix wrapping of spell descriptions for texts without spaces (e.g., Chinese).
+- Fix continous spells formatting and cost in the spell details panel.
+- Properly escape % characters in config localization entries to avoid formatting issues.
+- Fix centering of element icons on book spines.
+
+
 ## [0.2.2] - 2025-11-12
 ### Added
 - Add block rotation and valid rotation queries in `BlockSpellArchive`.
 - Add dismantling support via wrench tools (e.g., Crescent Hammer).
 
 ### Fixed
-- Fix null tile entity issue when moving the Spell Archives.
+- Fix null tile entity issue when moving the Spellcaster's Archives.
 - Fix glyphs rendering when spell is undiscovered.
 - Fix discoveryMode not being taken into account.
 - Fix unlocalized text for elements.
@@ -31,7 +42,7 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 
 ### Fixed
 - Fix changelog script (script name) and bump version that was missed in last release.
-- Fix NPE when breaking the Spell Archive next to AE2 Storage Bus (in some versions of AE2-UEL).
+- Fix NPE when breaking the Spellcaster's Archives next to AE2 Storage Bus (in some versions of AE2-UEL).
 
 ### Changed
 - Move from a virtual slot system to true slotless:
@@ -90,7 +101,7 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 ## [0.1.0] - 2025-10-19
 
 ### Added
-- Spell Archive block: bottomless, per-type storage for Electroblob's Wizardry spell books
+- Spellcaster's Archives block: bottomless, per-type storage for Electroblob's Wizardry spell books
 - Forge IItemHandler capability with stable slot order and a virtual insertion slot
 - In-game GUI: responsive layout (50% width, 75% height) with tier shelves and element-colored spines
 - Right panel with spell details: icons, tier, element, costs/cooldown/charge, description; undiscovered handling

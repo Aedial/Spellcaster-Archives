@@ -4,15 +4,18 @@ buildscript {
         maven { url = "https://maven.minecraftforge.net" }
         maven { url = "https://files.minecraftforge.net/maven" } // legacy fallback
         mavenCentral()
+        maven { url = "https://plugins.gradle.org/m2/" }
     }
     dependencies {
         classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
+        // CurseGradle plugin compatible with Gradle 4.x
+        classpath 'gradle.plugin.com.matthewprenger:CurseGradle:1.2.0'
     }
 }
 
 apply plugin: 'net.minecraftforge.gradle.forge'
 
-version = "0.2.2"
+version = "0.2.3"
 group = "com.spellarchives"
 archivesBaseName = "spellarchives"
 
@@ -57,6 +60,55 @@ processResources {
     // Ensure all other resources are still copied (models, lang, textures, etc.)
     from(sourceSets.main.resources.srcDirs) {
         exclude 'mcmod.info'
+    }
+}
+
+// --------------------
+// CurseForge publishing
+// --------------------
+// Configure CurseGradle only if a project id is provided via -PcurseforgeProjectId or env CURSEFORGE_PROJECT_ID
+def cfProjectId = (project.findProperty('curseforgeProjectId') ?: System.getenv('CURSEFORGE_PROJECT_ID'))
+if (cfProjectId) {
+    apply plugin: 'com.matthewprenger.cursegradle'
+
+    def cfReleaseType = (project.findProperty('curseforgeReleaseType') ?: 'release')
+    def cfChangelog = (project.findProperty('curseforgeChangelog') ?: '')
+    def cfApiKey = (System.getenv('CURSEFORGE_TOKEN') ?: '')
+
+    curseforge {
+        apiKey = cfApiKey
+
+        project {
+            id = cfProjectId.toString()
+            releaseType = cfReleaseType.toString()
+
+            addGameVersion '1.12.2'
+
+            mainArtifact(jar) {
+                displayName = "Spellcaster's Archives ${project.version}"
+                changelog = cfChangelog
+                changelogType = 'markdown'
+            }
+
+            // Declare relations for CurseForge page
+            relations {
+                // Required: Electroblob's Wizardry
+                requiredDependency 'electroblobs-wizardry'
+                // Optional: Enchantment Library
+                optionalDependency 'enchantment-library'
+            }
+        }
+
+        // options {
+        //     javaVersionAutoDetect = false
+        // }
+    }
+
+    // Ensure the uploaded artifact is reobfuscated for release
+    afterEvaluate {
+        tasks.findAll { it.name.startsWith('curseforge') }.each { t ->
+            t.dependsOn 'reobfJar'
+        }
     }
 }
 
