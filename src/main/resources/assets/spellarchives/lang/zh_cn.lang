@@ -11,11 +11,14 @@ chat.spellarchives.usage=用法：%s
 chat.spellarchives.invalid_number=无效的数量值：%s
 chat.spellarchives.player_only=此命令必须由玩家执行（以定位档案馆）。
 chat.spellarchives.look_at_archive=注视一个档案馆方块并再次执行此命令。
-chat.spellarchives.not_archive=该方块不是法术档案馆。
+chat.spellarchives.not_archive=该方块不是施法者档案馆。
 chat.spellarchives.no_ebwizardry_book=未找到巫术学的法术书物品（ebwizardry:spell_book）。
 chat.spellarchives.filled_summary=已向档案馆填充了%d种法术类型（%d/%d）。
 
 # GUI labels and formats
+config.spellarchives.theme_picker=主题选择器
+config.spellarchives.apply=应用
+config.spellarchives.apply_all=全部应用
 gui.spellarchives.prev=<
 gui.spellarchives.next=>
 gui.spellarchives.tier_fallback=等阶 %d
@@ -28,9 +31,7 @@ gui.spellarchives.cooldown_fmt=冷却：%s
 gui.spellarchives.charge_fmt=充能：%s
 gui.spellarchives.count_fmt=数量：%d
 gui.spellarchives.config_title=施法者档案馆 - 客户端设置
-config.spellarchives.theme_picker=主题选择器
-config.spellarchives.apply=应用
-config.spellarchives.apply_all=全部应用
+tooltip.spellarchives.archive_summary=内容：%1$d种法术丨共计%2$s本法术书
 
 # Time unit abbreviations
 timeunit.t=t
