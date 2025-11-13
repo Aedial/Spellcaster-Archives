@@ -335,7 +335,7 @@ public class GuiSpellArchive extends GuiContainer {
         int gridW = leftPanelW - GuiStyle.GRID_INNER_PADDING * 2;
         int gridH = leftPanelH - bottomBar - GuiStyle.LEFT_PANEL_BOTTOM_PAD;
 
-        gridCols = Math.max(1, gridW / (cellW));
+        gridCols = Math.max(1, gridW / (cellW + GuiStyle.SPINE_LEFT_BORDER));
         int headerH = this.fontRenderer.FONT_HEIGHT + GuiStyle.HEADER_EXTRA;
         gridRows = Math.max(1, gridH / (cellH + rowGap + headerH));
 
@@ -445,7 +445,7 @@ public class GuiSpellArchive extends GuiContainer {
             List<BookEntry> slice = dr.rows.get(idx);
 
             // Groove background; shrink width to just cover the books in this row
-            int grooveW = Math.min(gg.gridW, 1 + gridCols * cellW);
+            int grooveW = Math.min(gg.gridW, 1 + gridCols * (cellW + GuiStyle.SPINE_LEFT_BORDER));
             drawRowGroove(gg.gridX, baseY, grooveW, cellH);
 
             // Tier header
@@ -477,7 +477,7 @@ public class GuiSpellArchive extends GuiContainer {
             // Books in this row
             for (int i = 0; i < slice.size(); i++) {
                 BookEntry b = slice.get(i);
-                int x = gg.gridX + i * cellW;
+                int x = gg.gridX + i * (cellW + GuiStyle.SPINE_LEFT_BORDER);
                 int y = baseY;
 
                 // Base spine color from element.getColour(), fallback to precomputed
@@ -492,7 +492,7 @@ public class GuiSpellArchive extends GuiContainer {
                 }
 
                 // Draw shaded spine texture, cached by (color, width, height)
-                int spineW = cellW - GuiStyle.SPINE_LEFT_BORDER; // leave left border, tight on right
+                int spineW = cellW;
                 int spineH = cellH - (GuiStyle.SPINE_TOP_BORDER + GuiStyle.SPINE_BOTTOM_BORDER); // leave top/bottom borders inside groove
                 if (spineW > 0 && spineH > 0) {
                     ResourceLocation eIcon = (repElem != null) ? repElem.getIcon() : null;
@@ -539,14 +539,14 @@ public class GuiSpellArchive extends GuiContainer {
                     }
                 }
 
-                if (mouseX >= x && mouseX < x + cellW && mouseY >= y && mouseY < y + cellH) {
+                if (mouseX >= x && mouseX < x + cellW + GuiStyle.SPINE_LEFT_BORDER && mouseY >= y && mouseY < y + cellH) {
                     hoveredEntry = b;
                     int hoverBorder = GuiStyle.HOVER_BORDER;
 
-                    drawRect(x, y, x + cellW + 1, y + 1, hoverBorder);
-                    drawRect(x, y + cellH - 1, x + cellW + 1, y + cellH, hoverBorder);
+                    drawRect(x, y, x + cellW + 1 + GuiStyle.SPINE_LEFT_BORDER, y + 1, hoverBorder);
+                    drawRect(x, y + cellH - 1, x + cellW + 1 + GuiStyle.SPINE_LEFT_BORDER, y + cellH, hoverBorder);
                     drawRect(x, y, x + 1, y + cellH, hoverBorder);
-                    drawRect(x + cellW, y, x + cellW + 1, y + cellH, hoverBorder);
+                    drawRect(x + cellW + GuiStyle.SPINE_LEFT_BORDER, y, x + cellW + 1 + GuiStyle.SPINE_LEFT_BORDER, y + cellH, hoverBorder);
                 }
             }
         }
