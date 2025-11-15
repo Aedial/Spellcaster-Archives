@@ -215,7 +215,7 @@ public class GuiSpellArchive extends GuiContainer {
 
         grouped.keySet().stream().sorted().forEach(tier -> {
             List<BookEntry> list = grouped.get(tier);
-            list.sort(Comparator.comparingInt((BookEntry b) -> b.element));
+            list.sort(Comparator.comparingInt((BookEntry b) -> b.element * 1000000 + b.stack.getMetadata())); // element, then metadata
             rowsByTier.put(tier, list);
             tierOrder.add(tier);
         });
