@@ -1,10 +1,5 @@
 tile.spellarchives.spell_archive.name=Spellcaster's Archives
 
-config.spellarchives.theme.bookshelf=Bookshelf
-config.spellarchives.theme.parchment=Parchment
-config.spellarchives.theme.dark=Dark
-config.spellarchives.gui.leftPanel=Left Panel
-config.spellarchives.gui.rightPanel=Right Panel
 
 # Chat/command messages
 chat.spellarchives.usage=Usage: %s
@@ -15,10 +10,17 @@ chat.spellarchives.not_archive=That block is not a Spellcaster's Archives.
 chat.spellarchives.no_ebwizardry_book=Wizardry spell book item not found (ebwizardry:spell_book).
 chat.spellarchives.filled_summary=Filled %d spell types (%d/%d) into the archive.
 
+
 # GUI labels and formats
 config.spellarchives.theme_picker=Theme Picker
 config.spellarchives.apply=Apply
 config.spellarchives.apply_all=Apply All
+config.spellarchives.theme.bookshelf=Bookshelf
+config.spellarchives.theme.parchment=Parchment
+config.spellarchives.theme.dark=Dark
+config.spellarchives.gui.leftPanel=Left Panel
+config.spellarchives.gui.rightPanel=Right Panel
+
 gui.spellarchives.prev=<
 gui.spellarchives.next=>
 gui.spellarchives.tier_fallback=Tier %d
@@ -31,7 +33,22 @@ gui.spellarchives.cooldown_fmt=Cooldown: %s
 gui.spellarchives.charge_fmt=Charge: %s
 gui.spellarchives.count_fmt=Count: %d
 gui.spellarchives.config_title=Spellcaster's Archives - Client Config
+
+gui.spellarchives.inst.left_extract=Left-click: extract one book
+gui.spellarchives.inst.shift_left_stack=Shift + Left-click: extract a stack (%d)
+gui.spellarchives.inst.right_discover=Right-click: use a scroll to identify this spell
+gui.spellarchives.inst.right_discover_add=Right-click: add identification scrolls to identify
+gui.spellarchives.inst.right_discover_disabled=Right-click: identification disabled (see config)
+gui.spellarchives.inst.right_discover_known=
+
+gui.spellarchives.scroll_slot.tooltip.empty=Click while holding an identification scroll to deposit
+gui.spellarchives.scroll_slot.tooltip.count=%s identification scroll(s)
+gui.spellarchives.scroll_slot.tooltip.full=Scroll reserve is full
+gui.spellarchives.scroll_slot.disabled.title=Identification slot disabled
+gui.spellarchives.scroll_slot.disabled.toggle=Enable it in the config to use this feature
+
 tooltip.spellarchives.archive_summary=Content: %1$d Spell types | %2$s total books
+
 
 # Time unit abbreviations
 timeunit.t=t
@@ -40,190 +57,241 @@ timeunit.m=m
 timeunit.h=h
 timeunit.d=d
 
+
 # Compact number suffixes
 numunit.k=k
 numunit.M=M
 numunit.B=B
 numunit.T=T
 
-# Config property descriptions shown in the in-game config GUI
-config.spellarchives.width_ratio_desc=Fraction of screen width used by the archive window (0 - 100%%).
-config.spellarchives.height_ratio_desc=Fraction of screen height used by the archive window (0 - 100%%).
-config.spellarchives.min_width_desc=Minimum width of the archive window in pixels.
-config.spellarchives.min_height_desc=Minimum height of the archive window in pixels.
 
-config.spellarchives.cell_w_desc=Width in pixels of a single book spine cell on the left panel.
-config.spellarchives.cell_h_desc=Height in pixels of a single book spine cell on the left panel.
-config.spellarchives.row_gap_desc=Vertical gap in pixels between rows of spines.
+# Category titles
+config.spellarchives.category.gameplay=Gameplay Settings
+config.spellarchives.category.gameplay.tooltip=Global gameplay options that affect interactions and rules (server-authoritative).
+config.spellarchives.category.gui=GUI Styling
+config.spellarchives.category.gui.tooltip=Client-only visual and layout settings for the Archives GUI.
+config.spellarchives.theme_picker.tooltip=Open a visual theme picker for the Archives GUI.
 
-# Layout and spacing
-config.spellarchives.margin_desc=Outer margin around the archive window (pixels).
-config.spellarchives.panel_radius_desc=Rounded corner radius of the main window background (pixels).
-config.spellarchives.right_panel_min_width_desc=Minimum width of the right details panel (pixels).
-config.spellarchives.right_panel_ratio_desc=Fraction of the window width dedicated to the right details panel (0 - 100%%).
-config.spellarchives.right_panel_radius_desc=Rounded corner radius of the right panel background (pixels).
-config.spellarchives.grid_inner_padding_desc=Inner padding between left panel edge and the content grid (pixels).
-config.spellarchives.bottom_bar_height_desc=Reserved height at the bottom for navigation controls (pixels).
-config.spellarchives.left_panel_bottom_pad_desc=Extra bottom padding inside the left panel under the grid (pixels).
 
-config.spellarchives.spine_enable_curvature_desc=Enable curved brightness effect on book spines.
-config.spellarchives.spine_enable_tilt_desc=Enable a slight asymmetric tilt on spines for variety.
-config.spellarchives.spine_enable_noise_desc=Add subtle per-pixel noise to spine textures.
-config.spellarchives.spine_enable_bands_desc=Enable thin decorative horizontal bands on spines.
-config.spellarchives.spine_embed_icon_desc=Embed the element icon directly into the spine texture instead of drawing it as an overlay.
-
-config.spellarchives.screen_darken_desc=Amount to darken the world behind the GUI (0%% = no darkening, 100%% = fully black). Range: 0 - 100%%
-
-config.spellarchives.left_panel_fill_desc=Left panel (main window) fill color (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFFE5E5E5
-config.spellarchives.left_panel_border_desc=Left panel (main window) border color (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFFB0B0B0
-config.spellarchives.right_panel_fill_desc=Right details panel background fill color (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFF000000
-config.spellarchives.right_panel_border_desc=Right panel border color (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFF111111
-config.spellarchives.detail_text_desc=Secondary/detail text color in the right panel (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFFAAAAAA
-config.spellarchives.hover_border_desc=Hover outline color drawn around spines (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0x90FFFFFF
-
-config.spellarchives.groove_base_desc=Base fill color for shelf grooves (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFF9A9A9A
-config.spellarchives.groove_hl_desc=Top highlight color for shelf grooves (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFFFFFFFF
-config.spellarchives.groove_sh_desc=Bottom shadow color for shelf grooves (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFF6E6E6E
-
-config.spellarchives.panel_gradient_desc=Strength of the vertical gradient applied to themed panel backgrounds (0 - 100%%).
-config.spellarchives.outer_shadow_desc=Strength of subtle inner/outer shadow applied to themed panels (0 - 100%%).
-
-# Navigation
-config.spellarchives.nav_button_size_desc=Size of the prev/next navigation buttons (pixels).
-config.spellarchives.arrows_y_offset_desc=Additional vertical offset for the navigation buttons row relative to grid end (pixels; negative moves up).
-config.spellarchives.spine_band_thickness_desc=Thickness in pixels of each decorative band drawn on the spine.
-config.spellarchives.spine_band_gap_desc=Gap in pixels between the two decorative bands on the spine.
-config.spellarchives.spine_band_top_space_desc=Space in pixels from the top of the available spine area to the first band.
-
-# Human-friendly config property display names (shown in the config GUI)
+# Config property display names (shown in the config GUI) - contains name + desc
 config.spellarchives.width_ratio=Window width ratio
-config.spellarchives.height_ratio=Window height ratio
-config.spellarchives.min_width=Minimum window width
-config.spellarchives.min_height=Minimum window height
-config.spellarchives.cell_w=Book cell width
-config.spellarchives.cell_h=Book cell height
-config.spellarchives.row_gap=Row gap (pixels)
-config.spellarchives.spine_enable_curvature=Enable spine curvature
-config.spellarchives.spine_enable_tilt=Enable spine tilt
-config.spellarchives.spine_enable_noise=Enable spine noise
-config.spellarchives.spine_enable_bands=Enable spine bands
-config.spellarchives.spine_embed_icon=Embed element icon in spine
-config.spellarchives.screen_darken_factor=Screen darken amount
-config.spellarchives.left_panel_fill=Left panel fill color
-config.spellarchives.left_panel_border=Left panel border color
-config.spellarchives.right_panel_fill=Right panel fill color
-config.spellarchives.right_panel_border=Right panel border color
-config.spellarchives.detail_text=Detail text color
-config.spellarchives.hover_border=Hover border color
-config.spellarchives.groove_base=Groove base color
-config.spellarchives.groove_hl=Groove highlight color
-config.spellarchives.groove_sh=Groove shadow color
-config.spellarchives.left_panel_theme=Left panel theme
-config.spellarchives.right_panel_theme=Right panel theme
-config.spellarchives.panel_gradient=Panel gradient strength
-config.spellarchives.outer_shadow=Outer shadow strength
-config.spellarchives.default_gui_width=Default GUI width
-config.spellarchives.default_gui_height=Default GUI height
-config.spellarchives.margin=Window outer margin
-config.spellarchives.panel_radius=Main panel corner radius
-config.spellarchives.right_panel_min_width=Right panel minimum width
-config.spellarchives.right_panel_ratio=Right panel width ratio
-config.spellarchives.right_panel_radius=Right panel corner radius
-config.spellarchives.grid_inner_padding=Left panel inner padding
-config.spellarchives.bottom_bar_height=Bottom bar height
-config.spellarchives.left_panel_bottom_pad=Left panel bottom padding
-config.spellarchives.nav_button_size=Navigation button size
-config.spellarchives.arrows_y_offset=Navigation row Y-offset
-config.spellarchives.spine_band_thickness=Spine band thickness
-config.spellarchives.spine_band_gap=Spine band gap
-config.spellarchives.spine_band_top_space=Spine band top space
-
-# Also provide the same keys with the 'gui' subprefix since some Forge versions
-# look up property display names as 'config.<modid>.gui.<property>' instead.
 config.spellarchives.gui.width_ratio=Window width ratio
+config.spellarchives.width_ratio_desc=Fraction of screen width used by the archive window (0 - 100%%).
+config.spellarchives.gui.width_ratio.tooltip=Fraction of screen width used by the archive window (0 - 100%%).
+
+config.spellarchives.height_ratio=Window height ratio
 config.spellarchives.gui.height_ratio=Window height ratio
+config.spellarchives.height_ratio_desc=Fraction of screen height used by the archive window (0 - 100%%).
+config.spellarchives.gui.height_ratio.tooltip=Fraction of screen height used by the archive window (0 - 100%%).
+
+config.spellarchives.min_width=Minimum window width
 config.spellarchives.gui.min_width=Minimum window width
+config.spellarchives.min_width_desc=Minimum width of the archive window in pixels.
+config.spellarchives.gui.min_width.tooltip=Minimum width of the archive window in pixels.
+
+config.spellarchives.min_height=Minimum window height
 config.spellarchives.gui.min_height=Minimum window height
+config.spellarchives.min_height_desc=Minimum height of the archive window in pixels.
+config.spellarchives.gui.min_height.tooltip=Minimum height of the archive window in pixels.
+
+config.spellarchives.cell_w=Book cell width
 config.spellarchives.gui.cell_w=Book cell width
+config.spellarchives.cell_w_desc=Width in pixels of a single book spine cell on the left panel.
+config.spellarchives.gui.cell_w.tooltip=Width in pixels of a single book spine cell on the left panel.
+
+config.spellarchives.cell_h=Book cell height
 config.spellarchives.gui.cell_h=Book cell height
+config.spellarchives.cell_h_desc=Height in pixels of a single book spine cell on the left panel.
+config.spellarchives.gui.cell_h.tooltip=Height in pixels of a single book spine cell on the left panel.
+
+config.spellarchives.row_gap=Row gap (pixels)
 config.spellarchives.gui.row_gap=Row gap (pixels)
+config.spellarchives.row_gap_desc=Vertical gap in pixels between rows of spines.
+config.spellarchives.gui.row_gap.tooltip=Vertical gap in pixels between rows of spines.
+
+config.spellarchives.spine_enable_curvature=Enable spine curvature
 config.spellarchives.gui.spine_enable_curvature=Enable spine curvature
+config.spellarchives.spine_enable_curvature_desc=Enable curved brightness effect on book spines.
+config.spellarchives.gui.spine_enable_curvature.tooltip=Enable curved brightness effect on book spines.
+
+config.spellarchives.spine_enable_tilt=Enable spine tilt
 config.spellarchives.gui.spine_enable_tilt=Enable spine tilt
+config.spellarchives.spine_enable_tilt_desc=Enable a slight asymmetric tilt on spines for variety.
+config.spellarchives.gui.spine_enable_tilt.tooltip=Enable a slight asymmetric tilt on spines for variety.
+
+config.spellarchives.spine_enable_noise=Enable spine noise
 config.spellarchives.gui.spine_enable_noise=Enable spine noise
+config.spellarchives.spine_enable_noise_desc=Add subtle per-pixel noise to spine textures.
+config.spellarchives.gui.spine_enable_noise.tooltip=Add subtle per-pixel noise to spine textures.
+
+config.spellarchives.spine_enable_bands=Enable spine bands
 config.spellarchives.gui.spine_enable_bands=Enable spine bands
+config.spellarchives.spine_enable_bands_desc=Enable thin decorative horizontal bands on spines.
+config.spellarchives.gui.spine_enable_bands.tooltip=Enable thin decorative horizontal bands on spines.
+
+config.spellarchives.spine_embed_icon=Embed element icon in spine
 config.spellarchives.gui.spine_embed_icon=Embed element icon in spine
+config.spellarchives.spine_embed_icon_desc=Embed the element icon into the book spine.
+config.spellarchives.gui.spine_embed_icon.tooltip=Embed the element icon into the book spine.
+
+config.spellarchives.screen_darken_factor=Screen darken amount
 config.spellarchives.gui.screen_darken_factor=Screen darken amount
+config.spellarchives.screen_darken_factor_desc=Amount to darken the world behind the GUI (0%% = no darkening, 100%% = fully black). Range: 0 - 100%%.
+config.spellarchives.gui.screen_darken_factor.tooltip=Amount to darken the world behind the GUI (0%% = no darkening, 100%% = fully black). Range: 0 - 100%%.
+
+config.spellarchives.left_panel_fill=Left panel fill color
 config.spellarchives.gui.left_panel_fill=Left panel fill color
+config.spellarchives.left_panel_fill_desc=Left panel (main window) fill color (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFFE5E5E5
+config.spellarchives.gui.left_panel_fill.tooltip=Left panel (main window) fill color (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
+
+config.spellarchives.arrows_y_offset=Navigation row Y-offset
+config.spellarchives.gui.arrows_y_offset=Navigation row Y-offset
+config.spellarchives.arrows_y_offset_desc=Additional vertical offset for the navigation buttons row relative to grid end (pixels; negative moves up).
+config.spellarchives.gui.arrows_y_offset.tooltip=Additional vertical offset for the navigation buttons row relative to grid end (pixels; negative moves up).
+
+config.spellarchives.spine_band_thickness=Spine band thickness
+config.spellarchives.gui.spine_band_thickness=Spine band thickness
+config.spellarchives.spine_band_thickness_desc=Thickness in pixels of each decorative band drawn on the spine.
+config.spellarchives.gui.spine_band_thickness.tooltip=Thickness in pixels of each decorative band drawn on the spine.
+
+config.spellarchives.spine_band_gap=Spine band gap
+config.spellarchives.gui.spine_band_gap=Spine band gap
+config.spellarchives.spine_band_gap_desc=Gap in pixels between the two decorative bands on the spine.
+config.spellarchives.gui.spine_band_gap.tooltip=Gap in pixels between the two decorative bands on the spine.
+
+config.spellarchives.spine_band_top_space=Spine band top space
+config.spellarchives.gui.spine_band_top_space=Spine band top space
+config.spellarchives.spine_band_top_space_desc=Space in pixels from the top of the available spine area to the first band.
+config.spellarchives.gui.spine_band_top_space.tooltip=Space in pixels from the top of the available spine area to the first band.
+
+config.spellarchives.left_panel_border=Left panel border color
 config.spellarchives.gui.left_panel_border=Left panel border color
+config.spellarchives.left_panel_border_desc=Left panel (main window) border color (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFFB0B0B0
+config.spellarchives.gui.left_panel_border.tooltip=Left panel (main window) border color (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
+
+config.spellarchives.right_panel_fill=Right panel fill color
 config.spellarchives.gui.right_panel_fill=Right panel fill color
+config.spellarchives.right_panel_fill_desc=Right details panel background fill color (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFF000000
+config.spellarchives.gui.right_panel_fill.tooltip=Right details panel background fill color (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
+
+config.spellarchives.right_panel_border=Right panel border color
 config.spellarchives.gui.right_panel_border=Right panel border color
+config.spellarchives.right_panel_border_desc=Right panel border color (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFF111111
+config.spellarchives.gui.right_panel_border.tooltip=Right panel border color (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
+
+config.spellarchives.detail_text=Detail text color
 config.spellarchives.gui.detail_text=Detail text color
+config.spellarchives.detail_text_desc=Secondary/detail text color in the right panel (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFFAAAAAA
+config.spellarchives.gui.detail_text.tooltip=Secondary/detail text color in the right panel (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
+
+config.spellarchives.hover_border=Hover border color
 config.spellarchives.gui.hover_border=Hover border color
+config.spellarchives.hover_border_desc=Hover outline color drawn around spines (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0x90FFFFFF
+config.spellarchives.gui.hover_border.tooltip=Hover outline color drawn around spines (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
+
+config.spellarchives.groove_base=Groove base color
 config.spellarchives.gui.groove_base=Groove base color
+config.spellarchives.groove_base_desc=Base fill color for shelf grooves (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFF9A9A9A
+config.spellarchives.gui.groove_base.tooltip=Base fill color for shelf grooves (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
+
+config.spellarchives.groove_hl=Groove highlight color
 config.spellarchives.gui.groove_hl=Groove highlight color
+config.spellarchives.groove_hl_desc=Top highlight color for shelf grooves (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFFFFFFFF
+config.spellarchives.gui.groove_hl.tooltip=Top highlight color for shelf grooves (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
+
+config.spellarchives.groove_sh=Groove shadow color
 config.spellarchives.gui.groove_sh=Groove shadow color
+config.spellarchives.groove_sh_desc=Bottom shadow color for shelf grooves (hex). Accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB. Example: 0xFF6E6E6E
+config.spellarchives.gui.groove_sh.tooltip=Bottom shadow color for shelf grooves (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
+
+config.spellarchives.left_panel_theme=Left panel theme
 config.spellarchives.gui.left_panel_theme=Left panel theme
+config.spellarchives.left_panel_theme_desc=Choose a preset theme for the left (main) panel. Selecting a theme overwrites explicit colors.
+config.spellarchives.gui.left_panel_theme.tooltip=Choose a preset theme for the left (main) panel. Selecting a theme overwrites explicit colors.
+
+config.spellarchives.right_panel_theme=Right panel theme
 config.spellarchives.gui.right_panel_theme=Right panel theme
+config.spellarchives.right_panel_theme_desc=Choose a preset theme for the right details panel. Selecting a theme overwrites explicit colors.
+config.spellarchives.gui.right_panel_theme.tooltip=Choose a preset theme for the right details panel. Selecting a theme overwrites explicit colors.
+
+config.spellarchives.panel_gradient=Panel gradient strength
 config.spellarchives.gui.panel_gradient=Panel gradient strength
+config.spellarchives.panel_gradient_desc=Strength of the vertical gradient applied to themed panel backgrounds (0 - 100%%).
+config.spellarchives.gui.panel_gradient.tooltip=Strength of the vertical gradient applied to themed panel backgrounds (0 - 100%%).
+
+config.spellarchives.outer_shadow=Outer shadow strength
 config.spellarchives.gui.outer_shadow=Outer shadow strength
+config.spellarchives.outer_shadow_desc=Strength of subtle inner/outer shadow applied to themed panels (0 - 100%%).
+config.spellarchives.gui.outer_shadow.tooltip=Strength of subtle inner/outer shadow applied to themed panels (0 - 100%%).
+
+config.spellarchives.default_gui_width=Default GUI width
 config.spellarchives.gui.default_gui_width=Default GUI width
+config.spellarchives.default_gui_width_desc=Base width of the archive window when ratios would produce a smaller width (pixels).
+config.spellarchives.gui.default_gui_width.tooltip=Base width of the archive window when ratios would produce a smaller width (pixels).
+
+config.spellarchives.default_gui_height=Default GUI height
 config.spellarchives.gui.default_gui_height=Default GUI height
+config.spellarchives.default_gui_height_desc=Base height of the archive window when ratios would produce a smaller height (pixels).
+config.spellarchives.gui.default_gui_height.tooltip=Base height of the archive window when ratios would produce a smaller height (pixels).
+
+config.spellarchives.margin=Window outer margin
+config.spellarchives.gui.margin=Window outer margin
+config.spellarchives.margin_desc=Outer margin around the archive window (pixels).
+config.spellarchives.gui.margin.tooltip=Outer margin around the archive window (pixels).
+
 config.spellarchives.outer_shadow_strength=Outer shadow strength (detailed)
 config.spellarchives.gui.outer_shadow_strength=Outer shadow strength (detailed)
+config.spellarchives.outer_shadow_strength_desc=Strength of subtle inner/outer shadow applied to themed panels (0-100%%).
 config.spellarchives.gui.outer_shadow_strength.tooltip=Strength of subtle inner/outer shadow applied to themed panels (0-100%%).
-config.spellarchives.gui.margin=Window outer margin
-config.spellarchives.gui.panel_radius=Main panel corner radius
-config.spellarchives.gui.right_panel_min_width=Right panel minimum width
-config.spellarchives.gui.right_panel_ratio=Right panel width ratio
-config.spellarchives.gui.right_panel_radius=Right panel corner radius
-config.spellarchives.gui.grid_inner_padding=Left panel inner padding
-config.spellarchives.gui.bottom_bar_height=Bottom bar height
-config.spellarchives.gui.left_panel_bottom_pad=Left panel bottom padding
-config.spellarchives.gui.nav_button_size=Navigation button size
-config.spellarchives.gui.arrows_y_offset=Navigation row Y-offset
 
-# Tooltips (Forge GUI reads <languageKey>.tooltip when present)
-config.spellarchives.gui.width_ratio.tooltip=Fraction of screen width used by the archive window (0 - 100%%).
-config.spellarchives.gui.height_ratio.tooltip=Fraction of screen height used by the archive window (0 - 100%%).
-config.spellarchives.gui.min_width.tooltip=Minimum width of the archive window in pixels.
-config.spellarchives.gui.min_height.tooltip=Minimum height of the archive window in pixels.
-config.spellarchives.gui.cell_w.tooltip=Width in pixels of a single book spine cell on the left panel.
-config.spellarchives.gui.cell_h.tooltip=Height in pixels of a single book spine cell on the left panel.
-config.spellarchives.gui.row_gap.tooltip=Vertical gap in pixels between rows of spines.
-config.spellarchives.gui.margin.tooltip=Outer margin around the archive window (pixels).
+config.spellarchives.panel_radius=Main panel corner radius
+config.spellarchives.gui.panel_radius=Main panel corner radius
+config.spellarchives.panel_radius_desc=Rounded corner radius of the main window background (pixels).
 config.spellarchives.gui.panel_radius.tooltip=Rounded corner radius of the main window background (pixels).
+
+config.spellarchives.right_panel_min_width=Right panel minimum width
+config.spellarchives.gui.right_panel_min_width=Right panel minimum width
+config.spellarchives.right_panel_min_width_desc=Minimum width of the right details panel (pixels).
 config.spellarchives.gui.right_panel_min_width.tooltip=Minimum width of the right details panel (pixels).
+
+config.spellarchives.right_panel_ratio=Right panel width ratio
+config.spellarchives.gui.right_panel_ratio=Right panel width ratio
+config.spellarchives.right_panel_ratio_desc=Fraction of the window width dedicated to the right details panel (0 - 100%%).
 config.spellarchives.gui.right_panel_ratio.tooltip=Fraction of the window width dedicated to the right details panel (0 - 100%%).
+
+config.spellarchives.right_panel_radius=Right panel corner radius
+config.spellarchives.gui.right_panel_radius=Right panel corner radius
+config.spellarchives.right_panel_radius_desc=Rounded corner radius of the right panel background (pixels).
 config.spellarchives.gui.right_panel_radius.tooltip=Rounded corner radius of the right panel background (pixels).
+
+config.spellarchives.grid_inner_padding=Left panel inner padding
+config.spellarchives.gui.grid_inner_padding=Left panel inner padding
+config.spellarchives.grid_inner_padding_desc=Inner padding between left panel edge and the content grid (pixels).
 config.spellarchives.gui.grid_inner_padding.tooltip=Inner padding between left panel edge and the content grid (pixels).
-config.spellarchives.gui.bottom_bar_height.tooltip=Reserved height at the bottom for navigation controls (pixels).
+
+config.spellarchives.left_panel_bottom_pad=Left panel bottom padding
+config.spellarchives.gui.left_panel_bottom_pad=Left panel bottom padding
+config.spellarchives.left_panel_bottom_pad_desc=Extra bottom padding inside the left panel under the grid (pixels).
 config.spellarchives.gui.left_panel_bottom_pad.tooltip=Extra bottom padding inside the left panel under the grid (pixels).
-config.spellarchives.gui.spine_enable_curvature.tooltip=Enable curved brightness effect on book spines.
-config.spellarchives.gui.spine_enable_tilt.tooltip=Enable a slight asymmetric tilt on spines for variety.
-config.spellarchives.gui.spine_enable_noise.tooltip=Add subtle per-pixel noise to spine textures.
-config.spellarchives.gui.spine_enable_bands.tooltip=Enable thin decorative horizontal bands on spines.
-config.spellarchives.gui.spine_embed_icon.tooltip=Embed the element icon directly into the spine texture instead of drawing it as an overlay.
-config.spellarchives.gui.screen_darken_factor.tooltip=Amount to darken the world behind the GUI (0%% = no darkening, 100%% = fully black). Range: 0 - 100%%.
-config.spellarchives.gui.left_panel_fill.tooltip=Left panel (main window) fill color (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
-config.spellarchives.gui.left_panel_border.tooltip=Left panel (main window) border color (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
-config.spellarchives.gui.right_panel_fill.tooltip=Right details panel background fill color (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
-config.spellarchives.gui.right_panel_border.tooltip=Right panel border color (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
-config.spellarchives.gui.detail_text.tooltip=Secondary/detail text color in the right panel (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
-config.spellarchives.gui.hover_border.tooltip=Hover outline color drawn around spines (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
-config.spellarchives.gui.groove_base.tooltip=Base fill color for shelf grooves (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
-config.spellarchives.gui.groove_hl.tooltip=Top highlight color for shelf grooves (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
-config.spellarchives.gui.groove_sh.tooltip=Bottom shadow color for shelf grooves (accepts 0xAARRGGBB or #RRGGBB/#AARRGGBB).
-config.spellarchives.gui.left_panel_theme.tooltip=Choose a preset theme for the left (main) panel. Selecting a theme overwrites explicit colors.
-config.spellarchives.gui.right_panel_theme.tooltip=Choose a preset theme for the right details panel. Selecting a theme overwrites explicit colors.
-config.spellarchives.gui.panel_gradient.tooltip=Strength of the vertical gradient applied to themed panel backgrounds (0 - 100%%).
-config.spellarchives.gui.outer_shadow.tooltip=Strength of subtle inner/outer shadow applied to themed panels (0 - 100%%).
-config.spellarchives.gui.default_gui_width.tooltip=Base width of the archive window when ratios would produce a smaller width (pixels).
-config.spellarchives.gui.default_gui_height.tooltip=Base height of the archive window when ratios would produce a smaller height (pixels).
+
+config.spellarchives.bottom_bar_height=Bottom bar height
+config.spellarchives.gui.bottom_bar_height=Bottom bar height
+config.spellarchives.bottom_bar_height_desc=Reserved height at the bottom for navigation controls (pixels).
+config.spellarchives.gui.bottom_bar_height.tooltip=Reserved height at the bottom for navigation controls (pixels).
+
+config.spellarchives.nav_button_size=Navigation button size
+config.spellarchives.gui.nav_button_size=Navigation button size
+config.spellarchives.nav_button_size_desc=Size of the prev/next navigation buttons (pixels).
 config.spellarchives.gui.nav_button_size.tooltip=Size of the prev/next navigation buttons (pixels).
-config.spellarchives.gui.arrows_y_offset.tooltip=Additional vertical offset for the navigation buttons row relative to grid end (pixels; negative moves up).
-config.spellarchives.gui.spine_band_thickness.tooltip=Thickness in pixels of each decorative band drawn on the spine.
-config.spellarchives.gui.spine_band_gap.tooltip=Gap in pixels between the two decorative bands on the spine.
-config.spellarchives.gui.spine_band_top_space.tooltip=Space in pixels from the top of the available spine area to the first band.
-config.spellarchives.gui.spine_band_thickness=Spine band thickness
-config.spellarchives.gui.spine_band_gap=Spine band gap
-config.spellarchives.gui.spine_band_top_space=Spine band top space
+
+config.spellarchives.scroll_slot_max_size=Scroll slot max size
+config.spellarchives.gui.scroll_slot_max_size=Scroll slot max size
+config.spellarchives.scroll_slot_max_size_desc=Maximum visual size in pixels of the identification scroll reserve slot in the bottom bar.
+config.spellarchives.gui.scroll_slot_max_size.tooltip=Maximum visual size (pixels) for the scroll reserve slot; smaller screens may further reduce it automatically.
+
+
+# Gameplay/global config labels
+config.spellarchives.scroll_reserve_enabled=Enable identification scroll reserve
+config.spellarchives.scroll_reserve_enabled.tooltip=Allow using identification scrolls in the Archives to identify spells.
+config.spellarchives.scroll_reserve_max=Scroll reserve capacity
+config.spellarchives.scroll_reserve_max.tooltip=Maximum number of identification scrolls the archive can hold.
