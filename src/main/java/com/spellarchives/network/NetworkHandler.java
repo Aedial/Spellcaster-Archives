@@ -24,6 +24,10 @@ public final class NetworkHandler {
 
         int id = 0;
         CHANNEL.registerMessage(MessageExtractBook.Handler.class, MessageExtractBook.class, id++, Side.SERVER);
+        CHANNEL.registerMessage(MessageDepositScrolls.Handler.class, MessageDepositScrolls.class, id++, Side.SERVER);
+        CHANNEL.registerMessage(MessageExtractScrolls.Handler.class, MessageExtractScrolls.class, id++, Side.SERVER);
+        CHANNEL.registerMessage(MessageDiscoverSpell.Handler.class, MessageDiscoverSpell.class, id++, Side.SERVER);
+        CHANNEL.registerMessage(MessageDiscoverSpellAck.Handler.class, MessageDiscoverSpellAck.class, id++, Side.CLIENT);
         initialized = true;
     }
 }

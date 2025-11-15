@@ -50,7 +50,15 @@ public class BlockSpellArchive extends BlockContainer implements IDismantleable 
     // Not a full 16x16x16 cube; model uses 1..15 bounds
     private static final AxisAlignedBB AABB = new AxisAlignedBB(1 / 16.0D, 1 / 16.0D, 1 / 16.0D, 15 / 16.0D, 15 / 16.0D, 15 / 16.0D);
 
+    enum ActivationItem {
+        SPELL_BOOK,
+        IDENTIFICATION_SCROLL
+    }
+
+    // Timestamp of last activation for bulk insert detection
     private long timeLastActivated = 0L;
+    // Last item that was inserted for bulk insert detection
+    private ActivationItem lastInsertedItem = null;
 
     public BlockSpellArchive() {
         super(Material.WOOD);
@@ -201,20 +209,46 @@ public class BlockSpellArchive extends BlockContainer implements IDismantleable 
 
             ItemStack held = playerIn.getHeldItem(hand);
 
-            // If the player is holding right-click, insert all spell books from the player's inventory.
+            // If the player is holding right-click, insert all spell books/scrolls from the player's inventory.
             // Otherwise, insert only the held stack. Hold right-click within 500ms to bulk insert.
+            // Will only bulk-insert the same type of item as last time to avoid confusion.
             if (Instant.now().toEpochMilli() - timeLastActivated < 500L) {
                 for (int i = 0; i < playerIn.inventory.getSizeInventory(); i++) {
                     ItemStack slotStack = playerIn.inventory.getStackInSlot(i);
-                    if (slotStack != null && !slotStack.isEmpty() && archive.isSpellBook(slotStack)) {
+                    if (slotStack == null || slotStack.isEmpty()) continue;
+
+                    if (lastInsertedItem == ActivationItem.SPELL_BOOK && archive.isSpellBook(slotStack)) {
                         ItemStack remaining = archive.addBooks(slotStack);
                         playerIn.inventory.setInventorySlotContents(i, remaining);
+                    } else if (lastInsertedItem == ActivationItem.IDENTIFICATION_SCROLL && archive.isIdentificationScroll(slotStack)) {
+                        int toAdd = slotStack.getCount();
+                        if (toAdd > 0) {
+                            int accepted = archive.addIdentificationScrolls(toAdd);
+                            if (!playerIn.isCreative() && accepted > 0) {
+                                slotStack.shrink(accepted);
+                                playerIn.inventory.setInventorySlotContents(i, slotStack.getCount() > 0 ? slotStack : ItemStack.EMPTY);
+                            }
+                        }
                     }
                 }
             } else if (held != null && !held.isEmpty() && archive.isSpellBook(held)) {
                 ItemStack remaining = archive.addBooks(held);
                 if (remaining != held) playerIn.setHeldItem(hand, remaining);
+
                 timeLastActivated = Instant.now().toEpochMilli();
+                lastInsertedItem = ActivationItem.SPELL_BOOK;
+            } else if (held != null && !held.isEmpty() && archive.isIdentificationScroll(held)) {
+                int toAdd = held.getCount();
+                if (toAdd > 0) {
+                    int accepted = archive.addIdentificationScrolls(toAdd);
+                    if (!playerIn.isCreative() && accepted > 0) {
+                        held.shrink(accepted);
+                        playerIn.setHeldItem(hand, held.getCount() > 0 ? held : ItemStack.EMPTY);
+                    }
+
+                    timeLastActivated = Instant.now().toEpochMilli();
+                    lastInsertedItem = ActivationItem.IDENTIFICATION_SCROLL;
+                }
             } else {
                 playerIn.openGui(SpellArchives.instance, GuiHandler.GUI_SPELL_ARCHIVE, worldIn, pos.getX(), pos.getY(), pos.getZ());
             }

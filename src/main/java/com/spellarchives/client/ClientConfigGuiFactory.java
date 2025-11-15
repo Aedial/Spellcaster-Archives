@@ -15,11 +15,13 @@ import net.minecraftforge.common.config.ConfigElement;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fml.client.IModGuiFactory;
 import net.minecraftforge.fml.client.IModGuiFactory.RuntimeOptionCategoryElement;
+import net.minecraftforge.fml.client.config.DummyConfigElement.DummyCategoryElement;
 import net.minecraftforge.fml.client.config.GuiConfig;
 import net.minecraftforge.fml.client.config.IConfigElement;
 
 import com.spellarchives.SpellArchives;
 import com.spellarchives.gui.GuiStyle;
+import com.spellarchives.config.SpellArchivesConfig;
 
 
 /**
@@ -63,12 +65,40 @@ class ClientConfigGui extends GuiConfig {
     }
 
     private static List<IConfigElement> buildElements() {
-        Configuration cfg = ClientConfig.getConfiguration();
-        if (cfg == null) return new ArrayList<>();
+        List<IConfigElement> out = new ArrayList<>();
 
-        List<IConfigElement> elements = new ConfigElement(cfg.getCategory("gui")).getChildElements();
-        elements.add(0, new ThemePickerConfigElement("theme_picker", I18n.format("config.spellarchives.theme_picker")));
+        // Ensure both configs are initialized
+        if (SpellArchivesConfig.getConfiguration() == null) SpellArchivesConfig.init();
+        Configuration guiCfg = ClientConfig.getConfiguration();
+        Configuration gameplayCfg = SpellArchivesConfig.getConfiguration();
 
-        return elements;
+        // Top-level category: Gameplay (server/global). Wrap to ensure proper localized title.
+        if (gameplayCfg != null && gameplayCfg.hasCategory("gameplay")) {
+            List<IConfigElement> gpChildren = new ConfigElement(gameplayCfg.getCategory("gameplay")).getChildElements();
+            out.add(new DummyCategoryElement("gameplay", "config.spellarchives.category.gameplay", gpChildren));
+        }
+
+        // Top-level category: GUI (client styling)
+        if (guiCfg != null && guiCfg.hasCategory("gui")) {
+            List<IConfigElement> guiChildren = new ConfigElement(guiCfg.getCategory("gui")).getChildElements();
+            // Insert theme picker at the top of the GUI category
+            guiChildren.add(0, new ThemePickerConfigElement("theme_picker", I18n.format("config.spellarchives.theme_picker")));
+
+            out.add(new DummyCategoryElement("gui", "config.spellarchives.category.gui", guiChildren));
+        }
+
+        return out;
+    }
+
+    @Override
+    public void onGuiClosed() {
+        super.onGuiClosed();
+
+        // Ensure both configurations are saved on Done
+        Configuration guiCfg = ClientConfig.getConfiguration();
+        if (guiCfg != null && guiCfg.hasChanged()) guiCfg.save();
+
+        net.minecraftforge.common.config.Configuration gameplayCfg = com.spellarchives.config.SpellArchivesConfig.getConfiguration();
+        if (gameplayCfg != null && gameplayCfg.hasChanged()) gameplayCfg.save();
     }
 }

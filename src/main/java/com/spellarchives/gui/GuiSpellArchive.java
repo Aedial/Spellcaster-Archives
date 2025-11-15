@@ -14,6 +14,7 @@ import java.util.function.IntFunction;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
+import org.lwjgl.opengl.GL11;
 
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiButton;
@@ -26,6 +27,7 @@ import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.text.Style;
@@ -36,6 +38,11 @@ import com.spellarchives.container.ContainerSpellArchive;
 import com.spellarchives.gui.GuiStyle;
 import com.spellarchives.network.MessageExtractBook;
 import com.spellarchives.network.NetworkHandler;
+import com.spellarchives.network.MessageDepositScrolls;
+import com.spellarchives.network.MessageExtractScrolls;
+import com.spellarchives.network.MessageDiscoverSpell;
+import com.spellarchives.SpellArchives;
+import com.spellarchives.config.SpellArchivesConfig;
 import com.spellarchives.render.DynamicTextureFactory;
 import com.spellarchives.util.TextUtils;
 import com.spellarchives.tile.TileSpellArchive;
@@ -62,11 +69,19 @@ public class GuiSpellArchive extends GuiContainer {
     private GuiButton prevButton;
     private GuiButton nextButton;
 
+    // Identification scroll slot geometry and hover state
+    private int scrollSlotX, scrollSlotY, scrollSlotW, scrollSlotH;
+    private boolean scrollSlotEnabled = true; // gated by config check
+
     // Cached layout pieces, recalculated each frame
     private int leftPanelX, leftPanelY, leftPanelW, leftPanelH;
     private int rightPanelX, rightPanelY, rightPanelW, rightPanelH;
     private int gridCols, gridRows;
     private int cellW = GuiStyle.CELL_W, cellH = GuiStyle.CELL_H, rowGap = GuiStyle.ROW_GAP;
+    
+    // Tooltip deferral so we can draw above buttons
+    private List<String> pendingTooltip = null;
+    private int pendingTipX = 0, pendingTipY = 0;
     
     // Helper value objects for layout computations
     public static class GridGeometry {
@@ -79,6 +94,14 @@ public class GuiSpellArchive extends GuiContainer {
             this.gridH = gridH;
             this.headerH = headerH;
         }
+    }
+
+    /**
+     * Called when some external state changed (e.g., discovery sync) requiring the
+     * right panel presentation to be rebuilt.
+     */
+    public void onExternalStateChanged() {
+        cacheManager.clearCachedPresentation();
     }
 
     public static class GrooveRow {
@@ -252,7 +275,10 @@ public class GuiSpellArchive extends GuiContainer {
         // 3) Pagination widgets
         placePaginationButtons(pageInfo.hasNext);
 
-        // 4) Render page and details
+        // 4) Identification scroll slot
+        computeAndRenderScrollSlot(mouseX, mouseY);
+
+        // 5) Render page and details
         BookEntry hovered = renderPage(displayRows, pageInfo, gg, mouseX, mouseY);
 
         // If hovered entry changed since last frame, clear cached presentation so the
@@ -428,6 +454,91 @@ public class GuiSpellArchive extends GuiContainer {
     }
 
     /**
+     * Computes geometry and renders the identification scroll slot between prev/next buttons.
+     */
+    private void computeAndRenderScrollSlot(int mouseX, int mouseY) {
+        int barY = leftPanelY + leftPanelH - GuiStyle.BOTTOM_BAR_HEIGHT / 2 - GuiStyle.ARROWS_Y_OFFSET;
+        int prevX = leftPanelX + GuiStyle.GRID_INNER_PADDING;
+        int nextX = leftPanelX + leftPanelW - GuiStyle.GRID_INNER_PADDING - GuiStyle.NAV_BUTTON_SIZE;
+
+        int prevRight = prevX + GuiStyle.NAV_BUTTON_SIZE;
+        int gapLeft = prevRight + GuiStyle.SCROLL_SLOT_SIDE_GAP;
+        int gapRight = nextX - GuiStyle.SCROLL_SLOT_SIDE_GAP;
+        int slotSize = Math.min(Math.min(GuiStyle.NAV_BUTTON_SIZE, gapRight - gapLeft), Math.max(8, GuiStyle.SCROLL_SLOT_MAX_SIZE));
+
+        // Center slot vertically on the same baseline as nav buttons
+        scrollSlotX = gapLeft + (gapRight - gapLeft - slotSize) / 2;
+        scrollSlotY = barY + (GuiStyle.NAV_BUTTON_SIZE - slotSize) / 2;
+        scrollSlotW = slotSize;
+        scrollSlotH = slotSize;
+
+        // Draw background
+        scrollSlotEnabled = isScrollSlotEnabled();
+        int fill = scrollSlotEnabled ? GuiStyle.SCROLL_SLOT_BG : GuiStyle.SCROLL_SLOT_BG_DISABLED;
+        int border = scrollSlotEnabled ? GuiStyle.SCROLL_SLOT_BORDER : GuiStyle.SCROLL_SLOT_BORDER_DISABLED;
+        drawRoundedPanel(scrollSlotX, scrollSlotY, scrollSlotW, scrollSlotH, GuiStyle.SCROLL_SLOT_RADIUS, fill, border);
+
+        // Draw stack/icon and count if available
+        int count = tile.getIdentificationScrollCountPublic();
+        int maxCount = SpellArchivesConfig.getScrollReserveMax();
+        if (count > 0) {
+            ItemStack example = new ItemStack(Item.REGISTRY.getObject(new ResourceLocation("ebwizardry", "identification_scroll")));
+            if (!example.isEmpty()) {
+                RenderHelper.enableGUIStandardItemLighting();
+                int iconX = scrollSlotX + 2;
+                int iconY = scrollSlotY + (scrollSlotH - 16) / 2;
+                itemRender.renderItemAndEffectIntoGUI(example, iconX, iconY);
+                RenderHelper.disableStandardItemLighting();
+
+                // Draw count at the bottom, horizontally centered within the slot (/2 for scaling)
+                String ct = TextUtils.formatCompactCount(count);
+                int textW = fontRenderer.getStringWidth(ct);
+                int textX = scrollSlotX + (scrollSlotW - textW / 2) / 2;                // center align
+                int textY = scrollSlotY + scrollSlotH + fontRenderer.FONT_HEIGHT / 4;   // under slot
+
+                GL11.glPushMatrix();
+                GL11.glScalef(0.5f, 0.5f, 1f); // scale down text to show well
+                int col = scrollSlotEnabled ? 0xFFFFFF : 0x888888;
+                fontRenderer.drawString(ct, textX * 2, textY * 2, col);
+                GL11.glPopMatrix();
+            }
+        }
+
+        // Visual overlays: gray when disabled
+        if (!scrollSlotEnabled) {
+            int overlay = 0x77000000;
+            drawRect(scrollSlotX, scrollSlotY, scrollSlotX + scrollSlotW, scrollSlotY + scrollSlotH, overlay);
+        }
+
+        // Hover outline and tooltip
+        boolean hover = mouseX >= scrollSlotX && mouseX < scrollSlotX + scrollSlotW && mouseY >= scrollSlotY && mouseY < scrollSlotY + scrollSlotH;
+        if (hover) {
+            if (scrollSlotEnabled) {
+                drawRect(scrollSlotX, scrollSlotY, scrollSlotX + scrollSlotW, scrollSlotY + 1, GuiStyle.HOVER_BORDER);
+                drawRect(scrollSlotX, scrollSlotY + scrollSlotH - 1, scrollSlotX + scrollSlotW, scrollSlotY + scrollSlotH, GuiStyle.HOVER_BORDER);
+                drawRect(scrollSlotX, scrollSlotY, scrollSlotX + 1, scrollSlotY + scrollSlotH, GuiStyle.HOVER_BORDER);
+                drawRect(scrollSlotX + scrollSlotW - 1, scrollSlotY, scrollSlotX + scrollSlotW, scrollSlotY + scrollSlotH, GuiStyle.HOVER_BORDER);
+            }
+
+            List<String> tip = new ArrayList<>();
+            if (!scrollSlotEnabled) {
+                tip.add(I18n.format("gui.spellarchives.scroll_slot.disabled.title"));
+                tip.add(I18n.format("gui.spellarchives.scroll_slot.disabled.toggle"));
+            } else if (count <= 0) {
+                tip.add(I18n.format("gui.spellarchives.scroll_slot.tooltip.empty"));
+            } else {
+                tip.add(I18n.format("gui.spellarchives.scroll_slot.tooltip.count", count));
+                if (maxCount > 0 && count >= maxCount) tip.add(I18n.format("gui.spellarchives.scroll_slot.tooltip.full"));
+            }
+
+            // Defer tooltip drawing so it renders above buttons and other widgets
+            pendingTooltip = tip;
+            pendingTipX = mouseX;
+            pendingTipY = mouseY;
+        }
+    }
+
+    /**
      * Renders the current page of spell book entries.
      * @param dr The display rows containing wrapped book entries
      * @param pi The page info with layout details
@@ -522,20 +633,6 @@ public class GuiSpellArchive extends GuiContainer {
                     if (GuiStyle.isPanelThemingEnabled()) {
                         int shadow = (0x22 << 24) | (GuiStyle.GROOVE_SH & 0x00FFFFFF);
                         drawRect(x + GuiStyle.SPINE_LEFT_BORDER, y + GuiStyle.SPINE_TOP_BORDER + spineH, x + GuiStyle.SPINE_LEFT_BORDER + spineW, y + GuiStyle.SPINE_TOP_BORDER + spineH + 1, shadow);
-                    }
-                }
-
-                // Draw small element icon at the bottom center (only when not embedded)
-                if (repElem != null && !GuiStyle.SPINE_EMBED_ICON) {
-                    ResourceLocation eIcon = repElem.getIcon();
-                    if (eIcon != null) {
-                        int iconSize = GuiStyle.SPINE_ICON_SIZE;
-                        int iconX = x + GuiStyle.SPINE_LEFT_BORDER + (spineW - iconSize) / 2;
-                        int iconY = y + GuiStyle.SPINE_TOP_BORDER + (spineH - iconSize - GuiStyle.SPINE_ICON_BOTTOM_MARGIN) + GuiStyle.SPINE_ICON_Y_OFFSET;
-
-                        this.mc.getTextureManager().bindTexture(eIcon);
-                        GlStateManager.color(1f, 1f, 1f, 1f);
-                        drawScaledCustomSizeModalRect(iconX, iconY, 0, 0, 16, 16, iconSize, iconSize, 16, 16);
                     }
                 }
 
@@ -821,6 +918,104 @@ public class GuiSpellArchive extends GuiContainer {
             GlStateManager.color(1f, 1f, 1f, 1f);
             drawScaledCustomSizeModalRect(iconX, iconY, 0, 0, 16, 16, iconW, iconH, 16, 16);
         }
+
+        // Instructions block: position immediately above the icon (if visible) or at the bottom of the right panel.
+        int instColor = GuiStyle.DETAIL_TEXT;
+        String inst1 = I18n.format("gui.spellarchives.inst.left_extract");
+        String inst2 = I18n.format("gui.spellarchives.inst.shift_left_stack", p.stack.getMaxStackSize());
+        String inst3;
+        if (!p.discovered) {
+            boolean enabled = isScrollSlotEnabled();
+            int reserve = tile.getIdentificationScrollCountPublic();
+            if (!enabled) inst3 = I18n.format("gui.spellarchives.inst.right_discover_disabled");
+            else if (reserve <= 0) inst3 = I18n.format("gui.spellarchives.inst.right_discover_add");
+            else inst3 = I18n.format("gui.spellarchives.inst.right_discover");
+        } else {
+            inst3 = I18n.format("gui.spellarchives.inst.right_discover_known");
+        }
+
+        List<String> instLines = new ArrayList<>();
+        instLines.add(inst1);
+        instLines.add(inst2);
+        if (inst3 != null && !inst3.isEmpty()) instLines.add(inst3);
+
+        // Wrap each instruction line individually to avoid losing semantic separation
+        List<String> wrappedInst1 = new ArrayList<>();
+        List<String> wrappedInst2 = new ArrayList<>();
+        List<String> wrappedInst3 = new ArrayList<>();
+        if (safeMaxW > 0) {
+            wrappedInst1.addAll(TextUtils.wrapTextToWidth(fontRenderer, inst1, safeMaxW));
+            wrappedInst2.addAll(TextUtils.wrapTextToWidth(fontRenderer, inst2, safeMaxW));
+            if (inst3 != null && !inst3.isEmpty()) wrappedInst3.addAll(TextUtils.wrapTextToWidth(fontRenderer, inst3, safeMaxW));
+        }
+
+        int lineGap = GuiStyle.RIGHT_LINE_GAP_SMALL;
+        int minAllowed = rowY + GuiStyle.RIGHT_SECTION_GAP / 2;
+
+        // No icon: bottom alignment to the panel bottom/top of icon. inst3 has priority, then inst2, then inst1.
+        if (showIcon) {
+            int iconTopY = rightPanelY + rightPanelH - GuiStyle.RIGHT_BOTTOM_CLAMP_MARGIN - iconH;
+            int desiredBottom = iconTopY - 2; // small gap above icon
+
+            int availablePixels = Math.max(0, desiredBottom - minAllowed);
+            int availableLines = availablePixels / lineGap;
+
+            int lines3 = wrappedInst3.size();
+            int lines2 = wrappedInst2.size();
+            int lines1 = wrappedInst1.size();
+
+            boolean draw3 = false, draw2 = false, draw1 = false;
+            int used = 0;
+            if (lines3 > 0 && used + lines3 <= availableLines) { draw3 = true; used += lines3; }
+            if (lines2 > 0 && used + lines2 <= availableLines) { draw2 = true; used += lines2; }
+            if (lines1 > 0 && used + lines1 <= availableLines) { draw1 = true; used += lines1; }
+
+            if (used > 0) {
+                int totalHeight = used * lineGap;
+                int startY = desiredBottom - totalHeight;
+
+                // Draw in top-to-bottom order so inst3 ends up nearest the bottom
+                if (draw1) {
+                    for (String w : wrappedInst1) { fontRenderer.drawString(w, x, startY, instColor); startY += lineGap; }
+                }
+                if (draw2) {
+                    for (String w : wrappedInst2) { fontRenderer.drawString(w, x, startY, instColor); startY += lineGap; }
+                }
+                if (draw3) {
+                    for (String w : wrappedInst3) { fontRenderer.drawString(w, x, startY, instColor); startY += lineGap; }
+                }
+            }
+        } else {
+            int bottomEdge = rightPanelY + rightPanelH - GuiStyle.RIGHT_BOTTOM_CLAMP_MARGIN; // stick to panel bottom
+            int availablePixels = Math.max(0, bottomEdge - minAllowed);
+            int availableLines = availablePixels / lineGap;
+
+            int lines3 = wrappedInst3.size();
+            int lines2 = wrappedInst2.size();
+            int lines1 = wrappedInst1.size();
+
+            boolean draw3 = false, draw2 = false, draw1 = false;
+            int used = 0;
+            if (lines3 > 0 && used + lines3 <= availableLines) { draw3 = true; used += lines3; }
+            if (lines2 > 0 && used + lines2 <= availableLines) { draw2 = true; used += lines2; }
+            if (lines1 > 0 && used + lines1 <= availableLines) { draw1 = true; used += lines1; }
+
+            if (used > 0) {
+                int totalHeight = used * lineGap;
+                int startY = bottomEdge - totalHeight;
+                if (startY < minAllowed) startY = minAllowed; // safety clamp
+
+                if (draw1) {
+                    for (String w : wrappedInst1) { fontRenderer.drawString(w, x, startY, instColor); startY += lineGap; }
+                }
+                if (draw2) {
+                    for (String w : wrappedInst2) { fontRenderer.drawString(w, x, startY, instColor); startY += lineGap; }
+                }
+                if (draw3) {
+                    for (String w : wrappedInst3) { fontRenderer.drawString(w, x, startY, instColor); startY += lineGap; }
+                }
+            }
+        }
     }
 
     /**
@@ -834,15 +1029,60 @@ public class GuiSpellArchive extends GuiContainer {
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
         super.mouseClicked(mouseX, mouseY, mouseButton);
 
-        // Extract on click
+        // Interactions on book rows (left: extract, right: discover)
         GuiSpellArchive.BookEntry hovered = cacheManager.getHoveredEntry();
-        if (hovered != null) {
-            boolean shift = isShiftKeyDown();
-            int amount = shift ? 16 : 1;
-            if (this.mc != null && this.mc.player != null) {
-                String key = tile.keyOfPublic(hovered.stack);
-                NetworkHandler.CHANNEL.sendToServer(new MessageExtractBook(tile.getPos(), key, amount));
+        if (hovered == null || this.mc == null || this.mc.player == null) return;
+
+        String key = tile.keyOfPublic(hovered.stack);
+
+        if (mouseButton == 1) {
+            // Right click: attempt discovery if undiscovered
+            Spell spell = tile.getSpellPublic(hovered.stack);
+            WizardData data = WizardData.get(player);
+            if (spell != null && data != null) {
+                if (data.hasSpellBeenDiscovered(spell)) return;  // discovered -> do nothing on right click
+
+                // only send if config enabled and we have scrolls
+                if (SpellArchivesConfig.isScrollReserveEnabled() && tile.getIdentificationScrollCountPublic() > 0) {
+                    NetworkHandler.CHANNEL.sendToServer(new MessageDiscoverSpell(tile.getPos(), key));
+                }
             }
+        } else if (mouseButton == 0) {
+            // Left click: extract (stack if shift)
+            boolean shift = isShiftKeyDown();
+            int amount = shift ? hovered.stack.getMaxStackSize() : 1;
+            NetworkHandler.CHANNEL.sendToServer(new MessageExtractBook(tile.getPos(), key, amount));
+        }
+    }
+
+    /**
+     * Wrapper method to determine if the scroll slot feature should be enabled.
+     * Currently returns true when Wizardry discovery mode is enabled or the player is in creative.
+     * Hook for future expansion/config bridging.
+     */
+    private boolean isScrollSlotEnabled() {
+        return SpellArchivesConfig.isScrollReserveEnabled();
+    }
+
+    @Override
+    protected void mouseReleased(int mouseX, int mouseY, int state) {
+        super.mouseReleased(mouseX, mouseY, state);
+
+        boolean inScrollSlot = mouseX >= scrollSlotX && mouseX < scrollSlotX + scrollSlotW && mouseY >= scrollSlotY && mouseY < scrollSlotY + scrollSlotH;
+        if (!inScrollSlot) return;
+
+        if (this.mc == null || this.mc.player == null) return;
+
+        ItemStack carried = this.mc.player.inventory.getItemStack();
+        boolean rightClick = state == 1;
+
+        // we don't need to check for enable or other items, as no external inventory is accessible in the GUI
+        if (carried.isEmpty()) {
+            // Only extract when the cursor is empty; left=all, right=half
+            NetworkHandler.CHANNEL.sendToServer(new MessageExtractScrolls(tile.getPos(), rightClick));
+        } else if (!rightClick && tile.isIdentificationScroll(carried)) {
+            // Deposit identification scrolls if clicking the slot
+            NetworkHandler.CHANNEL.sendToServer(new MessageDepositScrolls(tile.getPos(), carried.getCount()));
         }
     }
 
@@ -857,6 +1097,18 @@ public class GuiSpellArchive extends GuiContainer {
         } else if (button == nextButton) {
             int maxPage = computeMaxPage();
             if (page < maxPage) page++;
+        }
+    }
+
+    @Override
+    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+        // Clear any pending tooltip before rendering cycle
+        pendingTooltip = null;
+        super.drawScreen(mouseX, mouseY, partialTicks);
+
+        // Draw deferred tooltip last so it appears above buttons
+        if (pendingTooltip != null && !pendingTooltip.isEmpty()) {
+            this.drawHoveringText(pendingTooltip, pendingTipX, pendingTipY);
         }
     }
 

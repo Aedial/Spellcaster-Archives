@@ -12,6 +12,7 @@ import com.spellarchives.client.GuiHandler;
 import com.spellarchives.command.CommandArchives;
 import com.spellarchives.network.NetworkHandler;
 import com.spellarchives.util.Log;
+import com.spellarchives.config.SpellArchivesConfig;
 
 
 /**
@@ -22,7 +23,7 @@ import com.spellarchives.util.Log;
 public class SpellArchives {
     public static final String MODID = "spellarchives";
     public static final String NAME = "Spellcaster's Archives";
-    public static final String VERSION = "0.2.0";
+    public static final String VERSION = "0.3.0";
     public static final Log LOGGER = new Log();
 
     @SidedProxy(clientSide = "com.spellarchives.client.ClientProxy", serverSide = "com.spellarchives.CommonProxy")
@@ -39,6 +40,9 @@ public class SpellArchives {
      */
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
+        // Initialize common (gameplay) config early
+        SpellArchivesConfig.init();
+
         proxy.preInit();
     }
 

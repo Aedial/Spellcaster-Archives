@@ -7,6 +7,16 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Keep a Changelog: https://keepachangelog.com/en/1.1.0/
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
+## [0.3.0] - 2025-11-15
+### Added
+- Add possibility to use Identification Scrolls inside the Spellcaster's Archives GUI to identify undiscovered spells directly.
+  - Inventory slot for them is at the bottom center of the left panel (configurable number of items).
+  - Can be inserted like spells, but only manually extracted.
+  - Right-click on an undiscovered spell in the left panel to identify it and consume one scroll.
+  - Has a config option to disable this feature if desired.
+- Add instructions about click controls to the spell details panel when a spell is selected.
+
+
 ## [0.2.4] - 2025-11-13
 ### Added
 - Add dumping of all spells in inventory to the Spellcaster's Archives when holding right-click.

@@ -37,7 +37,7 @@ public class ThemePickerConfigElement implements IConfigElement {
 
     @Override
     public String getComment() {
-        return null;
+        return I18n.format("config.spellarchives.theme_picker.tooltip");
     }
 
     @Override

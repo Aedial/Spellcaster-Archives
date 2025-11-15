@@ -141,6 +141,9 @@ public final class ClientConfig {
         defineInt("SPINE_BAND_GAP", GuiStyle.SPINE_BAND_GAP, 0, 100, "config.spellarchives.spine_band_gap_desc");
         defineInt("SPINE_BAND_TOP_SPACE", GuiStyle.SPINE_BAND_TOP_SPACE, 0, 100, "config.spellarchives.spine_band_top_space_desc");
 
+        // Scroll slot max size (pixels)
+        defineInt("SCROLL_SLOT_MAX_SIZE", GuiStyle.SCROLL_SLOT_MAX_SIZE, 8, 64, "config.spellarchives.scroll_slot_max_size_desc");
+
         // Localize category title/header
         config.getCategory("gui").setLanguageKey("gui.spellarchives.config_title");
 
@@ -319,7 +322,7 @@ public final class ClientConfig {
 
         Property p = config.get("gui", key, defPercent, I18n.format(descKey));
         p.setLanguageKey("config.spellarchives.gui." + key.toLowerCase(Locale.ROOT));
-        p.setComment(I18n.format(descKey) + " [percent: 0..100]");
+        p.setComment(I18n.format(descKey));
         if (minPercent <= maxPercent) {
             p.setMinValue(minPercent);
             p.setMaxValue(maxPercent);

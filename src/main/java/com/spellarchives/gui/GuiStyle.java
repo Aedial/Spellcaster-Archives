@@ -75,6 +75,16 @@ public final class GuiStyle {
 
     // Navigation (applies to page arrows layout)
     private static int NAV_BUTTON_SIZE_v = 20;              // Size of prev/next navigation buttons
+
+    // Scroll slot styling (identification scroll reserve)
+    public static final int SCROLL_SLOT_SIDE_GAP = 4;
+    public static final int SCROLL_SLOT_RADIUS = 3;
+    public static final int SCROLL_SLOT_BG = 0xAA222222;
+    public static final int SCROLL_SLOT_BORDER = 0xFF000000;
+    public static final int SCROLL_SLOT_BG_DISABLED = 0x55222222;
+    public static final int SCROLL_SLOT_BORDER_DISABLED = 0x66000000;
+    public static int SCROLL_SLOT_MAX_SIZE = 20;
+
     private static int ARROWS_Y_OFFSET_v = 6;               // Additional Y offset for buttons row vs grid end
 
     // Left spine rendering (book spines in the left panel)
@@ -248,6 +258,7 @@ public final class GuiStyle {
             // Nav/buttons
             NAV_BUTTON_SIZE = ClientConfig.getInt("NAV_BUTTON_SIZE", NAV_BUTTON_SIZE);
             ARROWS_Y_OFFSET = ClientConfig.getInt("ARROWS_Y_OFFSET", ARROWS_Y_OFFSET);
+            SCROLL_SLOT_MAX_SIZE = ClientConfig.getInt("SCROLL_SLOT_MAX_SIZE", SCROLL_SLOT_MAX_SIZE);
 
             // Spine toggles
             SPINE_ENABLE_CURVATURE = ClientConfig.getBoolean("SPINE_ENABLE_CURVATURE", SPINE_ENABLE_CURVATURE);
