@@ -48,6 +48,11 @@ gui.spellarchives.scroll_slot.disabled.title=Identification slot disabled
 gui.spellarchives.scroll_slot.disabled.toggle=Enable it in the config to use this feature
 
 tooltip.spellarchives.archive_summary=Content: %1$d Spell types | %2$s total books
+tooltip.spellarchives.autopickup=Auto-pickup: 
+tooltip.spellarchives.enabled=Enabled
+tooltip.spellarchives.enabled.suffix=
+tooltip.spellarchives.disabled=Disabled
+tooltip.spellarchives.disabled.suffix= (see config)
 
 
 # Time unit abbreviations
@@ -295,3 +300,5 @@ config.spellarchives.scroll_reserve_enabled=Enable identification scroll reserve
 config.spellarchives.scroll_reserve_enabled.tooltip=Allow using identification scrolls in the Archives to identify spells.
 config.spellarchives.scroll_reserve_max=Scroll reserve capacity
 config.spellarchives.scroll_reserve_max.tooltip=Maximum number of identification scrolls the archive can hold.
+config.spellarchives.auto_pickup_enabled=Enable auto-pickup
+config.spellarchives.auto_pickup_enabled.tooltip=When enabled, picking up Wizardry spell books will send them directly into any Archives item in your inventory.
