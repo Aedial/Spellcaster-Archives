@@ -10,7 +10,7 @@ import com.spellarchives.tile.TileSpellArchive;
 
 
 /**
- * Server-side container for the Spell Archive GUI. No slots are exposed since the
+ * Server-side container for the Spellcaster's Archives GUI. No slots are exposed since the
  * backing storage is aggregated and accessed via capability calls and network messages.
  */
 public class ContainerSpellArchive extends Container {
@@ -20,7 +20,7 @@ public class ContainerSpellArchive extends Container {
      * Binds the container to a specific tile instance.
      *
      * @param playerInv The player's inventory (unused, kept for symmetry).
-     * @param tile The Spell Archive tile entity.
+     * @param tile The Spellcaster's Archives tile entity.
      */
     public ContainerSpellArchive(InventoryPlayer playerInv, TileSpellArchive tile) {
         this.tile = tile;

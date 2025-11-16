@@ -1,5 +1,8 @@
 package com.spellarchives.block;
 
+import java.time.Instant;
+import java.util.ArrayList;
+
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.properties.PropertyDirection;
@@ -23,19 +26,21 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
+import cofh.api.block.IDismantleable;
+
 import com.spellarchives.SpellArchives;
 import com.spellarchives.client.GuiHandler;
 import com.spellarchives.tile.TileSpellArchive;
 
 
 /**
- * Block for the Spell Archive. Holds a {@link TileSpellArchive} that aggregates spell
- * books. Presents a model with variable stripes based on the number of distinct spell
+ * Block for the Spellcaster's Archives. Holds a {@link TileSpellArchive} that aggregates
+ * spell books. Presents a model with variable stripes based on the number of distinct spell
  * types stored. Right-click inserts held spell books or opens the GUI when an invalid
  * item or empty hand is used.
  */
 @SuppressWarnings("deprecation")
-public class BlockSpellArchive extends BlockContainer {
+public class BlockSpellArchive extends BlockContainer implements IDismantleable {
 
     // Facing direction of the block
     public static final PropertyDirection FACING = PropertyDirection.create("facing", EnumFacing.Plane.HORIZONTAL);
@@ -45,6 +50,16 @@ public class BlockSpellArchive extends BlockContainer {
     // Not a full 16x16x16 cube; model uses 1..15 bounds
     private static final AxisAlignedBB AABB = new AxisAlignedBB(1 / 16.0D, 1 / 16.0D, 1 / 16.0D, 15 / 16.0D, 15 / 16.0D, 15 / 16.0D);
 
+    enum ActivationItem {
+        SPELL_BOOK,
+        IDENTIFICATION_SCROLL
+    }
+
+    // Timestamp of last activation for bulk insert detection
+    private long timeLastActivated = 0L;
+    // Last item that was inserted for bulk insert detection
+    private ActivationItem lastInsertedItem = null;
+
     public BlockSpellArchive() {
         super(Material.WOOD);
         setHardness(2.0F);
@@ -53,7 +68,7 @@ public class BlockSpellArchive extends BlockContainer {
     }
 
     /**
-     * Creates the Spell Archive tile for this block. The world and metadata are part of the
+     * Creates the Spellcaster's Archives tile for this block. The world and metadata are part of the
      * vanilla signature but aren't used here since the tile has no variant state at creation.
      *
      * @param worldIn The world that will contain the tile (not used).
@@ -75,6 +90,45 @@ public class BlockSpellArchive extends BlockContainer {
     @Override
     public EnumBlockRenderType getRenderType(IBlockState state) {
         return EnumBlockRenderType.MODEL;
+    }
+
+    /**
+     * Advertise that this block supports horizontal rotations via tools. Returning the four
+     * horizontal faces allows wrenches to attempt rotation rather than remove/re-place.
+     * 
+     * @param world World containing the block (not used).
+     * @param pos Position of the block (not used).
+     */
+    @Override
+    public EnumFacing[] getValidRotations(World world, BlockPos pos) {
+        return new EnumFacing[]{EnumFacing.NORTH, EnumFacing.SOUTH, EnumFacing.WEST, EnumFacing.EAST};
+    }
+
+    /**
+     * Rotate the block to the face that was clicked (i.e., facing the player). If the top or bottom
+     * is clicked, the block rotates 90° clockwise from its current orientation.
+     *
+     * @param world The world containing the block.
+     * @param pos Position of the block to rotate.
+     * @param side The side the player clicked on.
+     * @return Always true to indicate success.
+     */
+    @Override
+    public boolean rotateBlock(World world, BlockPos pos, EnumFacing side) {
+        if (!world.isRemote) {
+            // if we wrench the top or bottom, rotate 90°
+            if (side.getAxis().isVertical()) side = world.getBlockState(pos).getValue(FACING).rotateY().getOpposite();
+            IBlockState rotated = world.getBlockState(pos).withProperty(FACING, side.getOpposite());
+
+            world.setBlockState(pos, rotated, 3);
+            TileEntity te = world.getTileEntity(pos);
+            if (te != null) te.markDirty();
+
+            // Use identical old/new states here to force a TE description packet with getUpdateTag()
+            world.notifyBlockUpdate(pos, rotated, rotated, 3);
+        }
+
+        return true;
     }
 
     /**
@@ -129,9 +183,10 @@ public class BlockSpellArchive extends BlockContainer {
     }
 
     /**
-     * Handles right-click activation. If the player is holding a spell book, the server inserts
-     * it into the archive; otherwise the GUI is opened. Client side returns early and lets the
-     * server perform the action.
+     * Handles right-click activation.
+     * If the player is holding right-click, inserts all spell books from the player's inventory.
+     * If the player is holding a spell book, the server inserts it into the archive.
+     * Otherwise the GUI is opened. Client side returns early and lets the server perform the action.
      *
      * @param worldIn Interaction world; used to check side and open the GUI on the server.
      * @param pos Position of the archive; used to locate the tile and open the GUI.
@@ -153,9 +208,47 @@ public class BlockSpellArchive extends BlockContainer {
             TileSpellArchive archive = (TileSpellArchive) te;
 
             ItemStack held = playerIn.getHeldItem(hand);
-            if (!held.isEmpty() && archive.isSpellBook(held)) {
+
+            // If the player is holding right-click, insert all spell books/scrolls from the player's inventory.
+            // Otherwise, insert only the held stack. Hold right-click within 500ms to bulk insert.
+            // Will only bulk-insert the same type of item as last time to avoid confusion.
+            if (Instant.now().toEpochMilli() - timeLastActivated < 500L) {
+                for (int i = 0; i < playerIn.inventory.getSizeInventory(); i++) {
+                    ItemStack slotStack = playerIn.inventory.getStackInSlot(i);
+                    if (slotStack == null || slotStack.isEmpty()) continue;
+
+                    if (lastInsertedItem == ActivationItem.SPELL_BOOK && archive.isSpellBook(slotStack)) {
+                        ItemStack remaining = archive.addBooks(slotStack);
+                        playerIn.inventory.setInventorySlotContents(i, remaining);
+                    } else if (lastInsertedItem == ActivationItem.IDENTIFICATION_SCROLL && archive.isIdentificationScroll(slotStack)) {
+                        int toAdd = slotStack.getCount();
+                        if (toAdd > 0) {
+                            int accepted = archive.addIdentificationScrolls(toAdd);
+                            if (!playerIn.isCreative() && accepted > 0) {
+                                slotStack.shrink(accepted);
+                                playerIn.inventory.setInventorySlotContents(i, slotStack.getCount() > 0 ? slotStack : ItemStack.EMPTY);
+                            }
+                        }
+                    }
+                }
+            } else if (held != null && !held.isEmpty() && archive.isSpellBook(held)) {
                 ItemStack remaining = archive.addBooks(held);
                 if (remaining != held) playerIn.setHeldItem(hand, remaining);
+
+                timeLastActivated = Instant.now().toEpochMilli();
+                lastInsertedItem = ActivationItem.SPELL_BOOK;
+            } else if (held != null && !held.isEmpty() && archive.isIdentificationScroll(held)) {
+                int toAdd = held.getCount();
+                if (toAdd > 0) {
+                    int accepted = archive.addIdentificationScrolls(toAdd);
+                    if (!playerIn.isCreative() && accepted > 0) {
+                        held.shrink(accepted);
+                        playerIn.setHeldItem(hand, held.getCount() > 0 ? held : ItemStack.EMPTY);
+                    }
+
+                    timeLastActivated = Instant.now().toEpochMilli();
+                    lastInsertedItem = ActivationItem.IDENTIFICATION_SCROLL;
+                }
             } else {
                 playerIn.openGui(SpellArchives.instance, GuiHandler.GUI_SPELL_ARCHIVE, worldIn, pos.getX(), pos.getY(), pos.getZ());
             }
@@ -205,6 +298,54 @@ public class BlockSpellArchive extends BlockContainer {
         }
     }
 
+    // ---- CoFH dismantle support ----
+    @Override
+    public boolean canDismantle(World world, BlockPos pos, IBlockState state, EntityPlayer player) {
+        return true;
+    }
+
+    @Override
+    public ArrayList<ItemStack> dismantleBlock(World world, BlockPos pos, IBlockState state, EntityPlayer player, boolean returnDrops) {
+        ArrayList<ItemStack> drops = new ArrayList<>();
+
+        TileEntity te = world.getTileEntity(pos);
+
+        ItemStack stack = new ItemStack(Item.getItemFromBlock(this));
+        if (te instanceof TileSpellArchive) {
+            NBTTagCompound tag = new NBTTagCompound();
+            te.writeToNBT(tag);
+
+            NBTTagCompound blockTag = new NBTTagCompound();
+            blockTag.setTag("BlockEntityTag", tag);
+            stack.setTagCompound(blockTag);
+
+            ((TileSpellArchive) te).suppressExternalCaps();
+        }
+
+        drops.add(stack.copy());
+
+        if (!world.isRemote) {
+            if (returnDrops && player != null) {
+                boolean added = player.inventory.addItemStackToInventory(stack.copy());
+                if (!added) spawnAsEntity(world, pos, stack.copy());
+            } else {
+                spawnAsEntity(world, pos, stack.copy());
+            }
+
+            world.setBlockToAir(pos);
+            if (world instanceof WorldServer) {
+                WorldServer ws = (WorldServer) world;
+                ws.addScheduledTask(() -> {
+                    if (ws.getBlockState(pos).getBlock() == this) ws.setBlockToAir(pos);
+                });
+            } else {
+                world.setBlockToAir(pos);
+            }
+        }
+
+        return drops;
+    }
+
     /**
      * Delay block removal until harvestBlock so the tile entity is still present
      * when we serialize it into the dropped stack. This improves resilience with
@@ -237,7 +378,7 @@ public class BlockSpellArchive extends BlockContainer {
      */
     @Override
     public IBlockState getStateForPlacement(World world, BlockPos pos, EnumFacing facing, float hitX, float hitY, float hitZ, int meta, EntityLivingBase placer, EnumHand hand) {
-        return this.getDefaultState().withProperty(FACING, placer.getHorizontalFacing());
+        return this.getDefaultState().withProperty(FACING, placer.getHorizontalFacing().getOpposite());
     }
 
     /**
@@ -298,7 +439,7 @@ public class BlockSpellArchive extends BlockContainer {
      *
      * @param state The incoming state prior to applying BOOKS.
      * @param world Read-only world access used to look up the tile at pos.
-     * @param pos Position of the Spell Archive tile to query.
+     * @param pos Position of the Spellcaster's Archives tile to query.
      * @return Either the original state (if unchanged) or a copy with BOOKS updated.
      */
     @Override

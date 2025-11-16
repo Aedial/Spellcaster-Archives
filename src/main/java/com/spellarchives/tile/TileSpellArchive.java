@@ -21,6 +21,8 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.NonNullList;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.fml.relauncher.Side;
@@ -38,7 +40,7 @@ import com.spellarchives.SpellArchives;
 
 
 /**
- * Tile entity for the Spell Archive block. This tile stores an effectively-unbounded
+ * Tile entity for the Spellcaster's Archives block. This tile stores an effectively-unbounded
  * collection of Electroblob's Wizardry spell books, collapsing identical books into
  * a single logical entry keyed by the book's registry name and metadata. The
  * inventory is exposed through capabilities:
@@ -66,6 +68,9 @@ public class TileSpellArchive extends TileEntity {
 
     // Incremented on content changes; synced to client for GUI refresh
     private int changeCounter = 0;
+
+    // Internal reserve of identification scrolls (manual-only extraction; not exposed via capabilities)
+    private int identificationScrolls = 0;
 
     // During block harvest we temporarily suppress exposing capability to avoid AE2 UEL
     // NPEs when neighbors are updated mid-removal.
@@ -150,23 +155,43 @@ public class TileSpellArchive extends TileEntity {
          */
         @Override
         public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-            if (stack.isEmpty() || !isSpellBook(stack)) return stack;
+            if (stack.isEmpty()) return stack;
 
-            if (!simulate) {
-                // insert into any slot, capping at Integer.MAX_VALUE per type
-                String key = keyOf(stack);
+            // Accept spell books
+            if (isSpellBook(stack)) {
+                if (!simulate) {
+                    // insert into any slot, capping at Integer.MAX_VALUE per type
+                    String key = keyOf(stack);
 
-                long current = (long) counts.getOrDefault(key, 0);
-                long newCount = Math.min(current + stack.getCount(), Integer.MAX_VALUE);
+                    long current = (long) counts.getOrDefault(key, 0);
+                    long newCount = Math.min(current + stack.getCount(), Integer.MAX_VALUE);
 
-                int oldSize = counts.size();
-                counts.put(key, (int) newCount);
-                updateCachedForKey(key, stack, oldSize);
+                    int oldSize = counts.size();
+                    counts.put(key, (int) newCount);
+                    updateCachedForKey(key, stack, oldSize);
+                    onContentsChanged();
+                }
 
-                onContentsChanged();
+                return ItemStack.EMPTY;
             }
 
-            return ItemStack.EMPTY;
+            // Accept identification scrolls via capability insertion into the internal reserve with capacity cap
+            if (isIdentificationScroll(stack)) {
+                int max = com.spellarchives.config.SpellArchivesConfig.getScrollReserveMax();
+                int canAccept = Math.max(0, (max < 0 ? Integer.MAX_VALUE : max) - identificationScrolls);
+                if (canAccept <= 0) return stack; // full
+
+                int toInsert = Math.min(canAccept, stack.getCount());
+                if (!simulate) addIdentificationScrolls(toInsert);
+
+                if (toInsert >= stack.getCount()) return ItemStack.EMPTY;
+
+                ItemStack rem = stack.copy();
+                rem.shrink(toInsert);
+                return rem;
+            }
+
+            return stack;
         }
 
         /**
@@ -225,7 +250,7 @@ public class TileSpellArchive extends TileEntity {
         }
 
         /**
-         * Only allows valid spell books.
+         * Only allows valid spell books and identification scrolls.
          *
          * @param slot Logical slot index.
          * @param stack Candidate stack to test.
@@ -233,9 +258,11 @@ public class TileSpellArchive extends TileEntity {
          */
         @Override
         public boolean isItemValid(int slot, ItemStack stack) {
-            if (stack.isEmpty() || !isSpellBook(stack)) return false;
+            if (stack.isEmpty() || (!isSpellBook(stack) && !isIdentificationScroll(stack))) return false;
 
             if (slot < 0 || slot >= slotKeys.size()) return false;
+
+            if (isIdentificationScroll(stack)) return true;
 
             String key = slotKeys.get(slot);
             return key != null && key.equals(keyOf(stack));
@@ -270,7 +297,7 @@ public class TileSpellArchive extends TileEntity {
          */
         @Override
         public ItemStack insertItem(ItemStack stack, boolean simulate, Predicate<ItemStack> predicate) {
-            if (stack.isEmpty() || !isSpellBook(stack)) return stack;
+            if (stack.isEmpty() || !(isSpellBook(stack) || isIdentificationScroll(stack))) return stack;
             if (predicate != null && !predicate.test(stack)) return stack;
 
             return insertItem(0, stack, simulate);
@@ -317,6 +344,66 @@ public class TileSpellArchive extends TileEntity {
         ItemStack toInsert = stack.copy();
         toInsert.setCount(count);
         return itemHandler.insertItem(0, toInsert, false);
+    }
+
+    /**
+     * Returns true if the given stack is a Wizardry identification scroll.
+     * Uses registry name for loose coupling.
+     */
+    public boolean isIdentificationScroll(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+
+        Item item = stack.getItem();
+        ResourceLocation rl = item.getRegistryName();
+        return rl != null && "ebwizardry".equals(rl.getNamespace()) && "identification_scroll".equals(rl.getPath());
+    }
+
+    /**
+     * Adds identification scrolls to the internal reserve. Not exposed to external item handlers.
+     *
+     * @param amount Number of scrolls to add (<= 0 ignored).
+     */
+    public int addIdentificationScrolls(int amount) {
+        if (amount <= 0) return 0;
+
+        int max = com.spellarchives.config.SpellArchivesConfig.getScrollReserveMax();
+        if (max < 0) max = Integer.MAX_VALUE;
+
+        int cur = this.identificationScrolls;
+        if (cur >= max) return 0;
+
+        int accepted = Math.min(amount, max - cur);
+        if (accepted > 0) {
+            this.identificationScrolls = cur + accepted;
+            onContentsChanged();
+        }
+
+        return accepted;
+    }
+
+    /**
+     * Consumes up to the requested number of identification scrolls.
+     *
+     * @param amount Maximum number to consume.
+     * @return The number actually consumed.
+     */
+    public int consumeIdentificationScrolls(int amount) {
+        if (amount <= 0) return 0;
+
+        int taken = Math.min(amount, this.identificationScrolls);
+        if (taken > 0) {
+            this.identificationScrolls -= taken;
+            onContentsChanged();
+        }
+
+        return taken;
+    }
+
+    /**
+     * Public getter for client GUI to display the reserve.
+     */
+    public int getIdentificationScrollCountPublic() {
+        return this.identificationScrolls;
     }
 
     /**
@@ -646,6 +733,8 @@ public class TileSpellArchive extends TileEntity {
         compound.setTag("spells", list);
         compound.setInteger("rev", this.changeCounter);
 
+        compound.setInteger("id_scrolls", this.identificationScrolls);
+
         return compound;
     }
 
@@ -694,7 +783,7 @@ public class TileSpellArchive extends TileEntity {
             }
 
             if (unmappedCount > 0) {
-                SpellArchives.LOGGER.warn("Spell Archive at " + pos + " failed to map " + unmappedCount + " spell(s) from removed mods:");
+                SpellArchives.LOGGER.warn("Spellcaster's Archives at " + pos + " failed to map " + unmappedCount + " spell(s) from removed mods:");
                 for (Map.Entry<String, Long> entry : unmappedByMod.entrySet()) {
                     SpellArchives.LOGGER.warn("  - Mod '" + entry.getKey() + "': " + entry.getValue() + " book(s)");
                 }
@@ -702,6 +791,8 @@ public class TileSpellArchive extends TileEntity {
         }
 
         this.changeCounter = compound.getInteger("rev");
+
+        this.identificationScrolls = compound.getInteger("id_scrolls");
     }
 
     /**
@@ -757,6 +848,21 @@ public class TileSpellArchive extends TileEntity {
      */
     public void suppressExternalCaps() {
         this.suppressCap = true;
+    }
+
+    /**
+     * Ensure the tile entity is NOT refreshed (re-created) on mere blockstate/property changes
+     * like rotations; only refresh if the actual block instance changes.
+     * 
+     * @param world The world.
+     * @param pos The block position.
+     * @param oldState The old block state.
+     * @param newState The new block state.
+     * @return True to refresh (remove/recreate), false to keep existing tile.
+     */
+    @Override
+    public boolean shouldRefresh(World world, BlockPos pos, IBlockState oldState, IBlockState newState) {
+        return oldState.getBlock() != newState.getBlock();
     }
 
     // ---- Client sync ----

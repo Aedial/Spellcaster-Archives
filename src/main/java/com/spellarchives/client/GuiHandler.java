@@ -13,7 +13,7 @@ import com.spellarchives.tile.TileSpellArchive;
 
 
 /**
- * Central Forge GUI handler for the Spell Archive. Bridges the server-side {@link ContainerSpellArchive}
+ * Central Forge GUI handler for the Spellcaster's Archives. Bridges the server-side {@link ContainerSpellArchive}
  * with the client-side {@link GuiSpellArchive} when a player opens the interface.
  *
  * Contract & Behavior:

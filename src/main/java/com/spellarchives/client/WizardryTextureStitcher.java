@@ -35,7 +35,7 @@ import electroblob.wizardry.spell.Spell;
 
 
 /**
- * Client-side utility responsible for stitching all Wizardry-derived resources the Spell Archive
+ * Client-side utility responsible for stitching all Wizardry-derived resources the Spellcaster's Archives
  * model depends on into the blocks texture atlas during the {@link TextureStitchEvent.Pre} phase.
  *
  * Responsibilities:
