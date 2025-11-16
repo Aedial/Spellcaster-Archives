@@ -21,10 +21,12 @@ public final class SpellArchivesConfig {
     private static final String CATEGORY = "gameplay";
     private static final String KEY_SCROLL_RESERVE_ENABLED = "scroll_reserve_enabled";
     private static final String KEY_SCROLL_RESERVE_MAX = "scroll_reserve_max";
+    private static final String KEY_AUTO_PICKUP_ENABLED = "auto_pickup_enabled";
 
     // Backing value with a sensible default (enabled by default)
     private static boolean scrollReserveEnabled = true;
     private static int scrollReserveMax = 2048;
+    private static boolean autoPickupEnabled = true;
 
     private SpellArchivesConfig() {}
 
@@ -75,6 +77,11 @@ public final class SpellArchivesConfig {
             .setMinValue(0)
             .setMaxValue(Integer.MAX_VALUE)
             .getInt(2048);
+
+        autoPickupEnabled = config
+            .get(CATEGORY, KEY_AUTO_PICKUP_ENABLED, true, I18n.format("config.spellarchives." + KEY_AUTO_PICKUP_ENABLED))
+            .setLanguageKey("config.spellarchives.auto_pickup_enabled")
+            .getBoolean(true);
     }
 
     /**
@@ -104,6 +111,15 @@ public final class SpellArchivesConfig {
      */
     public static int getScrollReserveMax() {
         return scrollReserveMax;
+    }
+
+    /**
+     * Returns whether automatic pickup of spell books into the carried Archives item is enabled.
+     */
+    public static boolean isAutoPickupEnabled() {
+        if (config == null) SpellArchives.LOGGER.warn("SpellArchivesConfig not initialized; using default for auto pickup.");
+
+        return autoPickupEnabled;
     }
 
     /**

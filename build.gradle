@@ -15,7 +15,7 @@ buildscript {
 
 apply plugin: 'net.minecraftforge.gradle.forge'
 
-version = "0.3.1"
+version = "0.4.0"
 group = "com.spellarchives"
 archivesBaseName = "spellarchives"
 
@@ -83,6 +83,13 @@ if (cfProjectId) {
             releaseType = cfReleaseType.toString()
 
             addGameVersion '1.12.2'
+            // Mark mod loader and runtime environment for CurseForge metadata
+            addGameVersion 'Forge'
+            // Environments supported
+            addGameVersion 'Client'
+            addGameVersion 'Server'
+            // Explicitly add Java version (plugin may auto-detect, but we pin it for clarity)
+            addGameVersion 'Java 8'
 
             mainArtifact(jar) {
                 displayName = "Spellcaster's Archives ${project.version}"

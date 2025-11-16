@@ -1,21 +1,22 @@
 # Spellcaster's Archives
 
-A Minecraft 1.12.2 Forge mod that adds a "Spell Archive" block: a bottomless, capability-aware storage for Electroblob's Wizardry spell books. It integrates with hoppers/pipes and provides an in-game GUI for browsing and extracting books.
+A Minecraft 1.12.2 Forge mod that adds a "Spellcaster's Archives" block: a bottomless, capability-aware storage for Electroblob's Wizardry spell books. It integrates with hoppers/pipes/AE2/etc and provides an in-game GUI for browsing and extracting books.
 
 ## Features
 
-- Bottomless per-type storage (up to Max Int per spell; overflow is always voided)
+- Bottomless Spells storage (up to Max Int per spell; overflow is always voided)
 - Item insertion/extraction for automation with stable slot order
-- Spells can be manually inserted via right-clicking with a spell book
+- Spells or identification scrolls can be manually inserted via right-clicking on the block with the item
+- Spells can be manually extracted by left-clicking on their spine in the GUI (1 on click, 16 on shift-click)
+- Undiscovered spells can be discovered by right-clicking on their spine (as long as you have identification scrolls left; can be disabled in config)
 - Content is preserved when broken or when spell mods are removed/added (removed spells are lost, but others remain unaffected)
-- In-game GUI:
-    - Configurable layout with paging (configuration through mod config, with config file hot-reloading)
+- Configurable GUI with paging (configuration through mod config, with config file hot-reloading)
     - Left panel: element-colored spines arranged in shelves by tier
     - Right panel: details for the hovered book
         - Spell name/description (or glyph if undiscovered)
         - Element icon/name, cost/cooldown/charge (? if undiscovered)
+        - Instructions about click controls
         - Spell icon (if discovered)
-    - Extraction: left click a spine to retrieve books (1 on click, 16 on shift-click)
 
 ## Requirements
 

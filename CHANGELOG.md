@@ -7,6 +7,12 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Keep a Changelog: https://keepachangelog.com/en/1.1.0/
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
+## [0.4.0] - 2025-11-16
+### Added
+- Add auto-pickup feature for Spellcaster's Archives:
+  - When enabled in config and present in player's inventory, the Archives will automatically eat any spell books that the player picks up.
+
+
 ## [0.3.1] - 2025-11-15
 ### Added
 - Add possibility to use Identification Scrolls inside the Spellcaster's Archives GUI to identify undiscovered spells directly.

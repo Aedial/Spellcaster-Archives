@@ -98,6 +98,16 @@ public class ModBlocks {
                             tooltip.add(TextFormatting.DARK_AQUA + line);
                         }
                     }
+
+                    // Auto-pickup state under the archive summary line
+                    boolean enabled = com.spellarchives.config.SpellArchivesConfig.isAutoPickupEnabled();
+                    String stateKey = enabled ? "tooltip.spellarchives.enabled" : "tooltip.spellarchives.disabled";
+                    TextFormatting stateColor = enabled ? TextFormatting.GREEN : TextFormatting.RED;
+                    tooltip.add(
+                        TextFormatting.DARK_AQUA + I18n.format("tooltip.spellarchives.autopickup") +
+                        stateColor + I18n.format(stateKey) +
+                        TextFormatting.DARK_AQUA + I18n.format(stateKey + ".suffix")
+                    );
                 }
 
                 /**
