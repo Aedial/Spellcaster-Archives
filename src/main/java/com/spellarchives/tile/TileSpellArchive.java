@@ -84,6 +84,10 @@ public class TileSpellArchive extends TileEntity {
     private static Map<Integer, String> metadataToSpellName = null;
     private static Map<String, Integer> spellNameToMetadata = null;
 
+    // Cached index of modid -> spell book item for that mod (prefers items named "spell_book")
+    private static Map<String, Item> spellBookByMod = null;
+    private static Item defaultSpellBook = null;
+
     /**
      * Builds static mappings between Wizardry spell metadata and their registry names.
      * Safe to call repeatedly; initialization happens once on first use.
@@ -492,14 +496,70 @@ public class TileSpellArchive extends TileEntity {
      */
     private static String spellNameToKey(String spellName) {
         buildSpellMappings();
+        buildSpellBookIndex();
 
         Integer meta = spellNameToMetadata.get(spellName);
         if (meta == null) return null;
 
-        Item spellBook = Item.REGISTRY.getObject(new ResourceLocation("ebwizardry", "spell_book"));
-        if (spellBook == null) return null;
+        String modid = "ebwizardry";
+        int i = spellName.indexOf(':');
+        if (i > 0) modid = spellName.substring(0, i);
+
+        Item spellBook = spellBookByMod.get(modid);
+        if (spellBook == null) spellBook = defaultSpellBook;
+        if (spellBook == null || spellBook.getRegistryName() == null) return null;
 
         return spellBook.getRegistryName() + "|" + meta;
+    }
+
+    /**
+     * Builds the cached index of modid -> ItemSpellBook for all registered items.
+     * Safe to call repeatedly; initialization happens once on first use.
+     */
+    private static void buildSpellBookIndex() {
+        if (spellBookByMod != null) return;
+
+        Map<String, Item> map = new HashMap<>();
+
+        for (ResourceLocation rl : Item.REGISTRY.getKeys()) {
+            Item item = Item.REGISTRY.getObject(rl);
+            if (!(item instanceof ItemSpellBook)) continue;
+
+            String modid = getNamespaceSafe(rl);
+            Item existing = map.get(modid);
+
+            // Prefer items whose path explicitly contains "spell_book"
+            if (existing == null || getPathSafe(rl).contains("spell_book")) {
+                map.put(modid, item);
+            }
+        }
+
+        Item eb = Item.REGISTRY.getObject(new ResourceLocation("ebwizardry", "spell_book"));
+        if (eb instanceof ItemSpellBook) {
+            map.put("ebwizardry", eb);
+            defaultSpellBook = eb;
+        }
+
+        spellBookByMod = map;
+    }
+
+    // Fallback-safe namespace extraction that works across mappings
+    private static String getNamespaceSafe(ResourceLocation rl) {
+        if (rl == null) return "";
+
+        String s = rl.toString(); // namespace:path
+        int idx = s.indexOf(':');
+
+        return idx >= 0 ? s.substring(0, idx) : "";
+    }
+
+    private static String getPathSafe(ResourceLocation rl) {
+        if (rl == null) return "";
+
+        String s = rl.toString();
+        int idx = s.indexOf(':');
+
+        return idx >= 0 ? s.substring(idx + 1) : s;
     }
 
     /**

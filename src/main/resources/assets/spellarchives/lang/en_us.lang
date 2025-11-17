@@ -41,7 +41,7 @@ gui.spellarchives.inst.right_discover_add=Right-click: add identification scroll
 gui.spellarchives.inst.right_discover_disabled=Right-click: identification disabled (see config)
 gui.spellarchives.inst.right_discover_known=
 
-gui.spellarchives.scroll_slot.tooltip.empty=Click while holding an identification scroll to deposit
+gui.spellarchives.scroll_slot.tooltip.empty=Right click on the block while holding an identification scroll to deposit. May also be piped in
 gui.spellarchives.scroll_slot.tooltip.count=%s identification scroll(s)
 gui.spellarchives.scroll_slot.tooltip.full=Scroll reserve is full
 gui.spellarchives.scroll_slot.disabled.title=Identification slot disabled

@@ -7,6 +7,11 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Keep a Changelog: https://keepachangelog.com/en/1.1.0/
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
+## [0.4.5] - 2025-11-17
+### Fixed
+- Fix Spell books from other mods using ebwizardry Spell books, resulting in broken books and not being able to extract them correctly.
+
+
 ## [0.4.4] - 2025-11-17
 ### Fixed
 - Fix crash on dedicated servers.

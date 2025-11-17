@@ -23,7 +23,7 @@ import com.spellarchives.config.SpellArchivesConfig;
 public class SpellArchives {
     public static final String MODID = "spellarchives";
     public static final String NAME = "Spellcaster's Archives";
-    public static final String VERSION = "0.3.0";
+    public static final String VERSION = "0.4.5";
     public static final Log LOGGER = new Log();
 
     @SidedProxy(clientSide = "com.spellarchives.client.ClientProxy", serverSide = "com.spellarchives.CommonProxy")
