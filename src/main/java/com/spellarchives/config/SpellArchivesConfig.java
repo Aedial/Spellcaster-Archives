@@ -2,7 +2,7 @@ package com.spellarchives.config;
 
 import java.io.File;
 
-import net.minecraft.client.resources.I18n;
+import net.minecraft.util.text.translation.I18n;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fml.common.Loader;
@@ -67,19 +67,19 @@ public final class SpellArchivesConfig {
         if (config == null) return;
 
         scrollReserveEnabled = config
-            .get(CATEGORY, KEY_SCROLL_RESERVE_ENABLED, true, I18n.format("config.spellarchives." + KEY_SCROLL_RESERVE_ENABLED))
+            .get(CATEGORY, KEY_SCROLL_RESERVE_ENABLED, true, I18n.translateToLocal("config.spellarchives." + KEY_SCROLL_RESERVE_ENABLED))
             .setLanguageKey("config.spellarchives.scroll_reserve_enabled")
             .getBoolean(true);
 
         scrollReserveMax = config
-            .get(CATEGORY, KEY_SCROLL_RESERVE_MAX, 2048, I18n.format("config.spellarchives." + KEY_SCROLL_RESERVE_MAX))
+            .get(CATEGORY, KEY_SCROLL_RESERVE_MAX, 2048, I18n.translateToLocal("config.spellarchives." + KEY_SCROLL_RESERVE_MAX))
             .setLanguageKey("config.spellarchives.scroll_reserve_max")
             .setMinValue(0)
             .setMaxValue(Integer.MAX_VALUE)
             .getInt(2048);
 
         autoPickupEnabled = config
-            .get(CATEGORY, KEY_AUTO_PICKUP_ENABLED, true, I18n.format("config.spellarchives." + KEY_AUTO_PICKUP_ENABLED))
+            .get(CATEGORY, KEY_AUTO_PICKUP_ENABLED, true, I18n.translateToLocal("config.spellarchives." + KEY_AUTO_PICKUP_ENABLED))
             .setLanguageKey("config.spellarchives.auto_pickup_enabled")
             .getBoolean(true);
     }
