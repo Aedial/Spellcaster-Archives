@@ -160,6 +160,8 @@ public class GuiSpellArchive extends GuiContainer {
     private Map<Integer, List<BookEntry>> rowsByTier = new LinkedHashMap<>();
     private List<Integer> tierOrder = new ArrayList<>();
     private int lastChangeRev = -1;
+    private int cachedEasyWidth = -1;
+    private int cachedEasyWidthRev = -1;
 
     // (Spine and background dynamic textures are produced and cached by DynamicTextureFactory)
 
@@ -181,6 +183,9 @@ public class GuiSpellArchive extends GuiContainer {
 
         super.initGui();
 
+        // Reset easy layout cache on resize/init
+        cachedEasyWidth = -1;
+
         // Buttons with vanilla background
         this.buttonList.clear();
         this.prevButton = new GuiButton(1, 0, 0, 20, 20, I18n.format("gui.spellarchives.prev"));
@@ -198,6 +203,7 @@ public class GuiSpellArchive extends GuiContainer {
         entries.clear();
         rowsByTier.clear();
         tierOrder.clear();
+        cachedEasyWidth = -1;
 
         for (Map.Entry<String, Integer> e : tile.getSnapshot().entrySet()) {
             if (e.getValue() <= 0) continue;
@@ -260,7 +266,7 @@ public class GuiSpellArchive extends GuiContainer {
         if (tileChanged) {
             Set<String> currentKeys = getSnapshotKeys();
             if (cacheManager.haveKeysChanged(currentKeys)) rebuildEntries();
-    
+
             lastChangeRev = rev;
         }
 
@@ -312,7 +318,18 @@ public class GuiSpellArchive extends GuiContainer {
         int totalH = ySize;
 
         // Right panel width ~ 38% of total, min 120
-        rightPanelW = Math.max(GuiStyle.RIGHT_PANEL_MIN_WIDTH, (int) (totalW * GuiStyle.RIGHT_PANEL_RATIO));
+        if (GuiStyle.EASY_LAYOUT_ENABLED) {
+            // Check if we need to recalculate the easy layout width
+            int currentRev = tile.getChangeCounterPublic();
+            if (cachedEasyWidth == -1 || cachedEasyWidthRev != currentRev) {
+                cachedEasyWidth = computeEasyLayoutWidth();
+                cachedEasyWidthRev = currentRev;
+            }
+            rightPanelW = cachedEasyWidth;
+        } else {
+            rightPanelW = Math.max(GuiStyle.RIGHT_PANEL_MIN_WIDTH, (int) (totalW * GuiStyle.RIGHT_PANEL_RATIO));
+        }
+
         rightPanelH = totalH - margin * 2;
         rightPanelX = totalX + totalW - rightPanelW - margin;
         rightPanelY = totalY + margin;
@@ -322,6 +339,66 @@ public class GuiSpellArchive extends GuiContainer {
         leftPanelW = rightPanelX - leftPanelX - margin;
         leftPanelH = totalH - margin * 2;
     }
+
+    private int computeEasyLayoutWidth() {
+        if (entries.isEmpty()) return GuiStyle.RIGHT_PANEL_MIN_WIDTH;
+
+        int minW = GuiStyle.RIGHT_PANEL_MIN_WIDTH;
+        int maxW = (int)(this.xSize * 0.65f);                   // Allow up to 65% width
+        int step = minW < maxW - 10 ? (maxW - minW) / 10 : 1;   // 10 steps between min and max
+
+        int bestW = minW;
+        int minOverflow = Integer.MAX_VALUE;
+
+        int margin = GuiStyle.MARGIN;
+        int innerMargin = GuiStyle.RIGHT_PANEL_INNER_MARGIN;
+        // Available vertical space for content:
+        // Panel Height - Top Margin (start Y) - Bottom Clamp Margin
+        // rightPanelH is (ySize - margin * 2)
+        int panelH = ySize - margin * 2;
+        int availableSpace = panelH - margin - GuiStyle.RIGHT_BOTTOM_CLAMP_MARGIN;
+
+        int headerH = GuiStyle.RIGHT_TITLE_ICON_SIZE + GuiStyle.RIGHT_AFTER_HEADER_GAP;
+        int statsH = GuiStyle.RIGHT_LINE_GAP_MEDIUM + GuiStyle.RIGHT_LINE_GAP_SMALL * 3 + GuiStyle.RIGHT_SECTION_GAP;
+        int fixedOverhead = headerH + statsH;
+
+        for (int w = minW; w <= maxW; w += step) {
+            int contentW = w - innerMargin * 2;
+            int textW = w - GuiStyle.RIGHT_PANEL_TEXT_SIDE_PAD * 2;
+            if (contentW <= 0 || textW <= 0) continue;
+
+            int maxSpellOverflow = 0;
+
+            for (BookEntry entry : entries) {
+                Spell spell = tile.getSpellPublic(entry.stack);
+                if (spell == null) continue;
+
+                String desc = spell.getDescription();
+                if (desc == null) desc = "";
+
+                // Calculate description height
+                List<String> lines = TextUtils.wrapTextToWidth(fontRenderer, desc, textW);
+                int descH = lines.size() * GuiStyle.RIGHT_DESC_LINE_HEIGHT;
+
+                // Icon height (full width)
+                int iconH = contentW; 
+
+                int totalH = fixedOverhead + descH + iconH;
+                int overflow = totalH - availableSpace;
+                if (overflow > maxSpellOverflow) maxSpellOverflow = overflow;
+            }
+
+            if (maxSpellOverflow <= 0) return w;  // Found a width that fits everything
+
+            if (maxSpellOverflow < minOverflow) {
+                minOverflow = maxSpellOverflow;
+                bestW = w;
+            }
+        }
+
+        return bestW;
+    }
+
 
     private void renderBackgroundPanels() {
         int totalX = guiLeft;
@@ -389,47 +466,6 @@ public class GuiSpellArchive extends GuiContainer {
         }
 
         return new DisplayRows(displayRows, displayRowTiers);
-    }
-
-    /**
-     * Builds the layout for the current page of the display rows.
-     * @param dr The display rows containing wrapped book entries
-     * @param gg The grid geometry for positioning
-     * @return The PageInfo containing layout details for the current page
-     */
-    private PageInfo buildPageInfo(DisplayRows dr, GridGeometry gg) {
-        List<GrooveRow> pageLayout = new ArrayList<>();
-
-        int totalRows = dr.rows.size();
-        int gridBottom = gg.gridY + gg.gridH;
-        int curY = gg.gridY + gg.headerH;
-        int startRow = page * Math.max(1, gridRows);
-
-        Set<Integer> seenTiers = new HashSet<>();
-
-        for (int r = startRow; r < totalRows; r++) {
-            int tier = dr.rowTiers.get(r);
-            boolean showHeader = !seenTiers.contains(tier);
-
-            if (curY + cellH > gridBottom) break;
-
-            pageLayout.add(new GrooveRow(r, tier, curY, showHeader));
-            seenTiers.add(tier);
-
-            if (r + 1 < totalRows) {
-                int nextTier = dr.rowTiers.get(r + 1);
-                boolean nextIsFirstOfTier = !seenTiers.contains(nextTier);
-                if (nextIsFirstOfTier) {
-                    curY = curY + cellH + gg.headerH + rowGap;
-                } else {
-                    curY = curY + cellH + 1;
-                }
-            }
-        }
-
-        boolean anyHasNext = (startRow + pageLayout.size()) < totalRows;
-
-        return new PageInfo(pageLayout, anyHasNext);
     }
 
     /**

@@ -269,6 +269,11 @@ config.spellarchives.gui.right_panel_radius=Right panel corner radius
 config.spellarchives.right_panel_radius_desc=Rounded corner radius of the right panel background (pixels).
 config.spellarchives.gui.right_panel_radius.tooltip=Rounded corner radius of the right panel background (pixels).
 
+config.spellarchives.easy_layout_enabled=Easy layout
+config.spellarchives.gui.easy_layout_enabled=Easy layout
+config.spellarchives.height_ratio_desc=Automatically adapts the right panel width ratio to the right size for viewing.
+config.spellarchives.gui.easy_layout_enabled.tooltip=Automatically adapts the right panel width ratio to the right size for viewing.
+
 config.spellarchives.grid_inner_padding=Left panel inner padding
 config.spellarchives.gui.grid_inner_padding=Left panel inner padding
 config.spellarchives.grid_inner_padding_desc=Inner padding between left panel edge and the content grid (pixels).

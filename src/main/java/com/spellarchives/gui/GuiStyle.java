@@ -20,7 +20,7 @@ public final class GuiStyle {
     // -- Backing fields (mutable via config reload). Public getters are used by code.
     private static int DEFAULT_GUI_WIDTH_v = 248;           // Base width if screen ratio calc is smaller
     private static int DEFAULT_GUI_HEIGHT_v = 220;          // Base height if screen ratio calc is smaller
-    private static float WIDTH_RATIO_v = 0.5f;              // Archives window width = 50% of screen width
+    private static float WIDTH_RATIO_v = 0.75f;             // Archives window width = 75% of screen width
     private static float HEIGHT_RATIO_v = 0.75f;            // Archives window height = 75% of screen height
     private static int MIN_WIDTH_v = 220;                   // Minimum archive window width
     private static int MIN_HEIGHT_v = 180;                  // Minimum archive window height
@@ -136,6 +136,7 @@ public final class GuiStyle {
     public static int RIGHT_PANEL_MIN_WIDTH = RIGHT_PANEL_MIN_WIDTH_v;
     public static float RIGHT_PANEL_RATIO = RIGHT_PANEL_RATIO_v;
     public static int RIGHT_PANEL_RADIUS = RIGHT_PANEL_RADIUS_v;
+    public static boolean EASY_LAYOUT_ENABLED = true;
 
     public static int BACKGROUND_FILL = BACKGROUND_FILL_v;
     public static int BACKGROUND_BORDER = BACKGROUND_BORDER_v;
@@ -233,6 +234,7 @@ public final class GuiStyle {
             RIGHT_PANEL_MIN_WIDTH = ClientConfig.getInt("RIGHT_PANEL_MIN_WIDTH", RIGHT_PANEL_MIN_WIDTH);
             RIGHT_PANEL_RATIO = ClientConfig.getFloat("RIGHT_PANEL_RATIO", RIGHT_PANEL_RATIO);
             RIGHT_PANEL_RADIUS = ClientConfig.getInt("RIGHT_PANEL_RADIUS", RIGHT_PANEL_RADIUS);
+            EASY_LAYOUT_ENABLED = ClientConfig.getBoolean("EASY_LAYOUT_ENABLED", EASY_LAYOUT_ENABLED);
 
             BACKGROUND_FILL = ClientConfig.getInt("LEFT_PANEL_FILL", BACKGROUND_FILL);
             BACKGROUND_BORDER = ClientConfig.getInt("LEFT_PANEL_BORDER", BACKGROUND_BORDER);

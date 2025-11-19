@@ -86,6 +86,7 @@ public final class ClientConfig {
         // Window sizing
         definePercent("WIDTH_RATIO", GuiStyle.WIDTH_RATIO, 0f, 1f, "config.spellarchives.width_ratio_desc");
         definePercent("HEIGHT_RATIO", GuiStyle.HEIGHT_RATIO, 0f, 1f, "config.spellarchives.height_ratio_desc");
+        defineBool("EASY_LAYOUT_ENABLED", GuiStyle.EASY_LAYOUT_ENABLED, "config.spellarchives.easy_layout_enabled_desc");
         defineInt("MIN_WIDTH", GuiStyle.MIN_WIDTH, 64, 2000, "config.spellarchives.min_width_desc");
         defineInt("MIN_HEIGHT", GuiStyle.MIN_HEIGHT, 48, 2000, "config.spellarchives.min_height_desc");
         defineInt("DEFAULT_GUI_WIDTH", GuiStyle.DEFAULT_GUI_WIDTH, 100, 2000, "config.spellarchives.default_gui_width");
