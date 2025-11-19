@@ -15,7 +15,7 @@ import java.util.Set;
 public final class GuiCacheManager {
     private Set<String> lastKeys = new HashSet<>();
     private GuiSpellArchive.DisplayRows cachedDisplayRows = null;
-    private GuiSpellArchive.PageInfo cachedPageInfo = null;
+    private List<GuiSpellArchive.PageInfo> allCachedPages = null;
 
     // GUI instance helpers
     private GuiSpellArchive.BookEntry hoveredEntry = null;
@@ -24,7 +24,10 @@ public final class GuiCacheManager {
     private GuiSpellArchive.GridGeometry cachedGG = null;
 
     private int cachedGridColsForDisplay = -1;
-    private int cachedPageForLayout = -1;
+
+    // Geometry cache
+    private int lastGridX = -1, lastGridY = -1, lastGridW = -1, lastGridH = -1;
+    private int lastHeaderH = -1, lastCellH = -1, lastRowGap = -1, lastGridRows = -1;
 
     private int cachedStyleRevision = -1;
 
@@ -41,12 +44,14 @@ public final class GuiCacheManager {
     public void clearAll() {
         lastKeys.clear();
         cachedDisplayRows = null;
-        cachedPageInfo = null;
+        allCachedPages = null;
         cachedGridColsForDisplay = -1;
-        cachedPageForLayout = -1;
         hoveredEntry = null;
         cachedPresentationObj = null;
         cachedGG = null;
+
+        lastGridX = -1; lastGridY = -1; lastGridW = -1; lastGridH = -1;
+        lastHeaderH = -1; lastCellH = -1; lastRowGap = -1; lastGridRows = -1;
     }
 
     public void setHoveredEntry(GuiSpellArchive.BookEntry e) {
@@ -115,7 +120,7 @@ public final class GuiCacheManager {
 
             this.cachedDisplayRows = new GuiSpellArchive.DisplayRows(displayRows, displayRowTiers);
             this.cachedGridColsForDisplay = gridCols;
-            this.cachedPageInfo = null; // page info depends on displayRows
+            this.allCachedPages = null; // page info depends on displayRows
             this.lastKeys = new HashSet<>(snapshotKeys);
         }
 
@@ -125,46 +130,55 @@ public final class GuiCacheManager {
     public GuiSpellArchive.PageInfo getOrBuildPageInfo(GuiSpellArchive.DisplayRows dr,
                                                        int gridX, int gridY, int gridW, int gridH, int headerH,
                                                        int page, int cellH, int rowGap, int gridRows) {
-        boolean layoutChanged = false;
+        boolean geometryChanged =
+            lastGridX != gridX || lastGridY != gridY || lastGridW != gridW || lastGridH != gridH ||
+            lastHeaderH != headerH || lastCellH != cellH || lastRowGap != rowGap || lastGridRows != gridRows;
 
-        // Check if geometry changed by comparing stored grid geometry values
-        if (this.cachedPageInfo == null) layoutChanged = true;
-
-        if (this.cachedPageInfo == null || layoutChanged || this.cachedPageForLayout != page) {
-            // build page info
-            List<GuiSpellArchive.GrooveRow> pageLayout = new ArrayList<>();
+        if (this.allCachedPages == null || geometryChanged) {
+            // Rebuild all pages
+            this.allCachedPages = new ArrayList<>();
 
             int totalRows = dr.rows.size();
-            int gridBottom = gridY + gridH;
-            int curY = gridY + headerH;
+            int currentRow = 0;
 
-            // Use explicit gridRows (rows per page) for deterministic startRow
-            int rowsPerPage = Math.max(1, gridRows);
-            int startRow = page * rowsPerPage;
+            while (currentRow < totalRows) {
+                List<GuiSpellArchive.GrooveRow> pageLayout = new ArrayList<>();
+                int curY = gridY + headerH;
+                int gridBottom = gridY + gridH;
+                Set<Integer> pageSeenTiers = new HashSet<>();
 
-            Set<Integer> seenTiers = new HashSet<>();
+                while (currentRow < totalRows) {
+                    int tier = dr.rowTiers.get(currentRow);
+                    boolean showHeader = !pageSeenTiers.contains(tier);
 
-            for (int r = startRow; r < totalRows; r++) {
-                int tier = dr.rowTiers.get(r);
-                boolean showHeader = !seenTiers.contains(tier);
+                    if (curY + cellH > gridBottom) break;
 
-                if (curY + cellH > gridBottom) break;
+                    pageLayout.add(new GuiSpellArchive.GrooveRow(currentRow, tier, curY, showHeader));
+                    pageSeenTiers.add(tier);
 
-                pageLayout.add(new GuiSpellArchive.GrooveRow(r, tier, curY, showHeader));
-                seenTiers.add(tier);
+                    if (currentRow + 1 < totalRows) {
+                        int nextTier = dr.rowTiers.get(currentRow + 1);
+                        boolean nextIsFirstOfTier = !pageSeenTiers.contains(nextTier);
+                        curY += cellH + (nextIsFirstOfTier ? headerH + rowGap : 1);
+                    }
 
-                if (r + 1 < totalRows) {
-                    int nextTier = dr.rowTiers.get(r + 1);
-                    boolean nextIsFirstOfTier = !seenTiers.contains(nextTier);
-                    curY += cellH + (nextIsFirstOfTier ? headerH + rowGap : 1);
+                    currentRow++;
                 }
+
+                // Safety break to avoid infinite loop if a single row doesn't fit
+                if (pageLayout.isEmpty() && currentRow < totalRows) break;
+
+                boolean hasNext = currentRow < totalRows;
+                this.allCachedPages.add(new GuiSpellArchive.PageInfo(pageLayout, hasNext));
             }
 
-            boolean anyHasNext = (startRow + pageLayout.size()) < totalRows;
-            this.cachedPageInfo = new GuiSpellArchive.PageInfo(pageLayout, anyHasNext);
-            this.cachedPageForLayout = page;
+            // Update cache keys
+            lastGridX = gridX; lastGridY = gridY; lastGridW = gridW; lastGridH = gridH;
+            lastHeaderH = headerH; lastCellH = cellH; lastRowGap = rowGap; lastGridRows = gridRows;
         }
 
-        return this.cachedPageInfo;
+        if (page >= 0 && page < this.allCachedPages.size()) return this.allCachedPages.get(page);
+
+        return new GuiSpellArchive.PageInfo(new ArrayList<>(), false);
     }
 }
