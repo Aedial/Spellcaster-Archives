@@ -20,7 +20,7 @@ import net.minecraftforge.fml.client.config.GuiConfig;
 import net.minecraftforge.fml.client.config.IConfigElement;
 
 import com.spellarchives.SpellArchives;
-import com.spellarchives.gui.GuiStyle;
+import com.spellarchives.config.ClientConfig;
 import com.spellarchives.config.SpellArchivesConfig;
 
 
@@ -98,7 +98,7 @@ class ClientConfigGui extends GuiConfig {
         Configuration guiCfg = ClientConfig.getConfiguration();
         if (guiCfg != null && guiCfg.hasChanged()) guiCfg.save();
 
-        net.minecraftforge.common.config.Configuration gameplayCfg = com.spellarchives.config.SpellArchivesConfig.getConfiguration();
+        Configuration gameplayCfg = SpellArchivesConfig.getConfiguration();
         if (gameplayCfg != null && gameplayCfg.hasChanged()) gameplayCfg.save();
     }
 }

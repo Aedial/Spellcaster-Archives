@@ -100,7 +100,7 @@ public final class SpellArchiveModelRetexture {
             try {
                 // Build texture map with randomized corner textures and spell icons
                 Map<String, String> textures = new HashMap<>();
-                
+
                 // Keep base textures
                 textures.put("particle", "ebwizardry:blocks/dark_oak_bookshelf_top");
                 textures.put("side", "ebwizardry:blocks/dark_oak_bookshelf_side");
@@ -110,7 +110,7 @@ public final class SpellArchiveModelRetexture {
                 ResourceLocation leftIcon = WizardryTextureStitcher.getCoreSideSpellIcon(0);
                 ResourceLocation rightIcon = WizardryTextureStitcher.getCoreSideSpellIcon(1);
                 ResourceLocation backIcon = WizardryTextureStitcher.getCoreSideSpellIcon(2);
-                
+
                 // Convert spell icon paths: remove .png extension and adjust path
                 String leftPath = convertResourcePath(leftIcon);
                 String rightPath = convertResourcePath(rightIcon);
@@ -119,7 +119,7 @@ public final class SpellArchiveModelRetexture {
                 textures.put("spell_left", leftPath);
                 textures.put("spell_right", rightPath);
                 textures.put("spell_back", backPath);
-                
+
                 // Randomized corner textures
                 for (int corner = 0; corner < 8; corner++) {
                     String element = WizardryTextureStitcher.getCornerElement(corner);
@@ -163,13 +163,13 @@ public final class SpellArchiveModelRetexture {
                     DefaultVertexFormats.BLOCK,
                     getter
                 );
-                
+
                 // Register under the actual per-books path so blockstate resolves without reload
                 event.getModelRegistry().putObject(modelLocation, bakedModel);
                 // Also register under the canonical 'spell_archive' path for safety (books property included in variant)
                 ModelResourceLocation canonicalLoc = new ModelResourceLocation(baseLoc, variant);
                 event.getModelRegistry().putObject(canonicalLoc, bakedModel);
-                
+
             } catch (Exception e) {
                 SpellArchives.LOGGER.error("Failed to retexture spell archive model for " + variant, e);
             }

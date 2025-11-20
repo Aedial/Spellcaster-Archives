@@ -913,7 +913,7 @@ public class TileSpellArchive extends TileEntity {
     /**
      * Ensure the tile entity is NOT refreshed (re-created) on mere blockstate/property changes
      * like rotations; only refresh if the actual block instance changes.
-     * 
+     *
      * @param world The world.
      * @param pos The block position.
      * @param oldState The old block state.

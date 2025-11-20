@@ -35,7 +35,7 @@ import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
 
 import com.spellarchives.container.ContainerSpellArchive;
-import com.spellarchives.gui.GuiStyle;
+import com.spellarchives.config.ClientConfig;
 import com.spellarchives.network.MessageExtractBook;
 import com.spellarchives.network.NetworkHandler;
 import com.spellarchives.network.MessageDepositScrolls;
@@ -43,7 +43,7 @@ import com.spellarchives.network.MessageExtractScrolls;
 import com.spellarchives.network.MessageDiscoverSpell;
 import com.spellarchives.SpellArchives;
 import com.spellarchives.config.SpellArchivesConfig;
-import com.spellarchives.render.DynamicTextureFactory;
+import com.spellarchives.client.DynamicTextureFactory;
 import com.spellarchives.util.TextUtils;
 import com.spellarchives.tile.TileSpellArchive;
 
@@ -58,8 +58,8 @@ import electroblob.wizardry.spell.Spell;
 
 public class GuiSpellArchive extends GuiContainer {
     // Initial defaults; will be overridden by dynamic sizing
-    private static final int GUI_WIDTH = GuiStyle.DEFAULT_GUI_WIDTH;
-    private static final int GUI_HEIGHT = GuiStyle.DEFAULT_GUI_HEIGHT;
+    private static final int GUI_WIDTH = ClientConfig.DEFAULT_GUI_WIDTH;
+    private static final int GUI_HEIGHT = ClientConfig.DEFAULT_GUI_HEIGHT;
 
     private final TileSpellArchive tile;
     private final EntityPlayer player;
@@ -77,12 +77,12 @@ public class GuiSpellArchive extends GuiContainer {
     private int leftPanelX, leftPanelY, leftPanelW, leftPanelH;
     private int rightPanelX, rightPanelY, rightPanelW, rightPanelH;
     private int gridCols, gridRows;
-    private int cellW = GuiStyle.CELL_W, cellH = GuiStyle.CELL_H, rowGap = GuiStyle.ROW_GAP;
-    
+    private int cellW = ClientConfig.CELL_W, cellH = ClientConfig.CELL_H, rowGap = ClientConfig.ROW_GAP;
+
     // Tooltip deferral so we can draw above buttons
     private List<String> pendingTooltip = null;
     private int pendingTipX = 0, pendingTipY = 0;
-    
+
     // Helper value objects for layout computations
     public static class GridGeometry {
         final int gridX, gridY, gridW, gridH, headerH;
@@ -115,7 +115,7 @@ public class GuiSpellArchive extends GuiContainer {
             this.tier = tier;
             this.baseY = baseY;
             this.showHeader = showHeader;
-        }   
+        }
     }
 
     public static class DisplayRows {
@@ -178,8 +178,8 @@ public class GuiSpellArchive extends GuiContainer {
     @Override
     public void initGui() {
         // Dynamic sizing
-        this.xSize = Math.max(GuiStyle.MIN_WIDTH, (int) (this.width * GuiStyle.WIDTH_RATIO));
-        this.ySize = Math.max(GuiStyle.MIN_HEIGHT, (int) (this.height * GuiStyle.HEIGHT_RATIO));
+        this.xSize = Math.max(ClientConfig.MIN_WIDTH, (int) (this.width * ClientConfig.WIDTH_RATIO));
+        this.ySize = Math.max(ClientConfig.MIN_HEIGHT, (int) (this.height * ClientConfig.HEIGHT_RATIO));
 
         super.initGui();
 
@@ -238,7 +238,7 @@ public class GuiSpellArchive extends GuiContainer {
         GlStateManager.color(1f, 1f, 1f, 1f);
 
         // Darken the outside world behind the GUI according to configured factor
-        float darken = GuiStyle.SCREEN_DARKEN_FACTOR;
+        float darken = ClientConfig.SCREEN_DARKEN_FACTOR;
         if (darken > 0f) {
             int alpha = Math.max(0, Math.min(255, (int)(darken * 255f)));
             // drawRect uses ARGB int; full-screen overlay
@@ -255,7 +255,7 @@ public class GuiSpellArchive extends GuiContainer {
         GridGeometry gg = computeGridGeometry();
 
         // ensure caches are valid for current style revision
-        cacheManager.checkStyleRevision(GuiStyle.CONFIG_REVISION);
+        cacheManager.checkStyleRevision(ClientConfig.CONFIG_REVISION);
 
         // 2) Data rows and page layout (only recompute if keys/layout/page changed)
         GuiSpellArchive.GridGeometry cachedGG = cacheManager.getCachedGG();
@@ -311,14 +311,14 @@ public class GuiSpellArchive extends GuiContainer {
     }
 
     private void computePanels() {
-        int margin = GuiStyle.MARGIN;
+        int margin = ClientConfig.MARGIN;
         int totalX = guiLeft;
         int totalY = guiTop;
         int totalW = xSize;
         int totalH = ySize;
 
         // Right panel width ~ 38% of total, min 120
-        if (GuiStyle.EASY_LAYOUT_ENABLED) {
+        if (ClientConfig.EASY_LAYOUT_ENABLED) {
             // Check if we need to recalculate the easy layout width
             int currentRev = tile.getChangeCounterPublic();
             if (cachedEasyWidth == -1 || cachedEasyWidthRev != currentRev) {
@@ -327,7 +327,7 @@ public class GuiSpellArchive extends GuiContainer {
             }
             rightPanelW = cachedEasyWidth;
         } else {
-            rightPanelW = Math.max(GuiStyle.RIGHT_PANEL_MIN_WIDTH, (int) (totalW * GuiStyle.RIGHT_PANEL_RATIO));
+            rightPanelW = Math.max(ClientConfig.RIGHT_PANEL_MIN_WIDTH, (int) (totalW * ClientConfig.RIGHT_PANEL_RATIO));
         }
 
         rightPanelH = totalH - margin * 2;
@@ -341,30 +341,46 @@ public class GuiSpellArchive extends GuiContainer {
     }
 
     private int computeEasyLayoutWidth() {
-        if (entries.isEmpty()) return GuiStyle.RIGHT_PANEL_MIN_WIDTH;
+        if (entries.isEmpty()) return ClientConfig.RIGHT_PANEL_MIN_WIDTH;
 
-        int minW = GuiStyle.RIGHT_PANEL_MIN_WIDTH;
+        // Try to derive minW from fitting title, between Right_PANEL_MIN_WIDTH and 50% of total width
+        int title_gap = ClientConfig.RIGHT_TITLE_TEXT_GAP;
+        int right_text_pad = ClientConfig.RIGHT_PANEL_TEXT_SIDE_PAD;
+
+        // Get the longest spell name
+        int minW = ClientConfig.RIGHT_PANEL_MIN_WIDTH;
+        for (BookEntry entry : entries) {
+            Spell spell = tile.getSpellPublic(entry.stack);
+            if (spell == null) continue;
+
+            String name = "66.6x " + spell.getDisplayNameWithFormatting();
+            int nameW = title_gap + fontRenderer.getStringWidth(name) + right_text_pad * 2;
+            if (nameW > minW) minW = nameW;
+        }
+
+        minW = Math.min(minW, (int)(this.xSize * 0.5f));        // Cap at 50% width
+
         int maxW = (int)(this.xSize * 0.65f);                   // Allow up to 65% width
         int step = minW < maxW - 10 ? (maxW - minW) / 10 : 1;   // 10 steps between min and max
 
         int bestW = minW;
         int minOverflow = Integer.MAX_VALUE;
 
-        int margin = GuiStyle.MARGIN;
-        int innerMargin = GuiStyle.RIGHT_PANEL_INNER_MARGIN;
+        int margin = ClientConfig.MARGIN;
+        int innerMargin = ClientConfig.RIGHT_PANEL_INNER_MARGIN;
         // Available vertical space for content:
         // Panel Height - Top Margin (start Y) - Bottom Clamp Margin
         // rightPanelH is (ySize - margin * 2)
         int panelH = ySize - margin * 2;
-        int availableSpace = panelH - margin - GuiStyle.RIGHT_BOTTOM_CLAMP_MARGIN;
+        int availableSpace = panelH - margin - ClientConfig.RIGHT_BOTTOM_CLAMP_MARGIN;
 
-        int headerH = GuiStyle.RIGHT_TITLE_ICON_SIZE + GuiStyle.RIGHT_AFTER_HEADER_GAP;
-        int statsH = GuiStyle.RIGHT_LINE_GAP_MEDIUM + GuiStyle.RIGHT_LINE_GAP_SMALL * 3 + GuiStyle.RIGHT_SECTION_GAP;
+        int headerH = ClientConfig.RIGHT_TITLE_ICON_SIZE + ClientConfig.RIGHT_AFTER_HEADER_GAP;
+        int statsH = ClientConfig.RIGHT_LINE_GAP_MEDIUM + ClientConfig.RIGHT_LINE_GAP_SMALL * 3 + ClientConfig.RIGHT_SECTION_GAP;
         int fixedOverhead = headerH + statsH;
 
         for (int w = minW; w <= maxW; w += step) {
             int contentW = w - innerMargin * 2;
-            int textW = w - GuiStyle.RIGHT_PANEL_TEXT_SIDE_PAD * 2;
+            int textW = w - ClientConfig.RIGHT_PANEL_TEXT_SIDE_PAD * 2;
             if (contentW <= 0 || textW <= 0) continue;
 
             int maxSpellOverflow = 0;
@@ -378,10 +394,10 @@ public class GuiSpellArchive extends GuiContainer {
 
                 // Calculate description height
                 List<String> lines = TextUtils.wrapTextToWidth(fontRenderer, desc, textW);
-                int descH = lines.size() * GuiStyle.RIGHT_DESC_LINE_HEIGHT;
+                int descH = lines.size() * ClientConfig.RIGHT_DESC_LINE_HEIGHT;
 
                 // Icon height (full width)
-                int iconH = contentW; 
+                int iconH = contentW;
 
                 int totalH = fixedOverhead + descH + iconH;
                 int overflow = totalH - availableSpace;
@@ -406,7 +422,7 @@ public class GuiSpellArchive extends GuiContainer {
         int totalW = xSize;
         int totalH = ySize;
 
-        if (GuiStyle.isPanelThemingEnabled()) {
+        if (ClientConfig.isPanelThemingEnabled()) {
             // Use centralized factory to obtain a cached panel background texture
             ResourceLocation bg = DynamicTextureFactory.getOrCreatePanelBg(Math.max(1, totalW), Math.max(1, totalH));
             if (bg != null) {
@@ -416,14 +432,14 @@ public class GuiSpellArchive extends GuiContainer {
             }
 
             // soft inner shadow on top edge
-            int shadowCol = (0x40 << 24) | (GuiStyle.GROOVE_SH & 0x00FFFFFF);
+            int shadowCol = (0x40 << 24) | (ClientConfig.GROOVE_SH & 0x00FFFFFF);
             drawRect(totalX, totalY, totalX + totalW, totalY + 6, shadowCol);
 
             // right panel uses darker fill
-            drawRoundedPanel(rightPanelX, rightPanelY, rightPanelW, rightPanelH, GuiStyle.RIGHT_PANEL_RADIUS, GuiStyle.RIGHT_PANEL_FILL, GuiStyle.RIGHT_PANEL_BORDER);
+            drawRoundedPanel(rightPanelX, rightPanelY, rightPanelW, rightPanelH, ClientConfig.RIGHT_PANEL_RADIUS, ClientConfig.RIGHT_PANEL_FILL, ClientConfig.RIGHT_PANEL_BORDER);
         } else {
-            drawRoundedPanel(totalX, totalY, totalW, totalH, GuiStyle.PANEL_RADIUS, GuiStyle.BACKGROUND_FILL, GuiStyle.BACKGROUND_BORDER);
-            drawRoundedPanel(rightPanelX, rightPanelY, rightPanelW, rightPanelH, GuiStyle.RIGHT_PANEL_RADIUS, GuiStyle.RIGHT_PANEL_FILL, GuiStyle.RIGHT_PANEL_BORDER);
+            drawRoundedPanel(totalX, totalY, totalW, totalH, ClientConfig.PANEL_RADIUS, ClientConfig.BACKGROUND_FILL, ClientConfig.BACKGROUND_BORDER);
+            drawRoundedPanel(rightPanelX, rightPanelY, rightPanelW, rightPanelH, ClientConfig.RIGHT_PANEL_RADIUS, ClientConfig.RIGHT_PANEL_FILL, ClientConfig.RIGHT_PANEL_BORDER);
         }
     }
 
@@ -432,14 +448,14 @@ public class GuiSpellArchive extends GuiContainer {
      * @return The GridGeometry containing grid position and size
      */
     private GridGeometry computeGridGeometry() {
-        int bottomBar = GuiStyle.BOTTOM_BAR_HEIGHT;
-        int gridX = leftPanelX + GuiStyle.GRID_INNER_PADDING;
+        int bottomBar = ClientConfig.BOTTOM_BAR_HEIGHT;
+        int gridX = leftPanelX + ClientConfig.GRID_INNER_PADDING;
         int gridY = leftPanelY + 8;
-        int gridW = leftPanelW - GuiStyle.GRID_INNER_PADDING * 2;
-        int gridH = leftPanelH - bottomBar - GuiStyle.LEFT_PANEL_BOTTOM_PAD;
+        int gridW = leftPanelW - ClientConfig.GRID_INNER_PADDING * 2;
+        int gridH = leftPanelH - bottomBar - ClientConfig.LEFT_PANEL_BOTTOM_PAD;
 
-        gridCols = Math.max(1, gridW / (cellW + GuiStyle.SPINE_LEFT_BORDER));
-        int headerH = this.fontRenderer.FONT_HEIGHT + GuiStyle.HEADER_EXTRA;
+        gridCols = Math.max(1, gridW / (cellW + ClientConfig.SPINE_LEFT_BORDER));
+        int headerH = this.fontRenderer.FONT_HEIGHT + ClientConfig.HEADER_EXTRA;
         gridRows = Math.max(1, gridH / (cellH + rowGap + headerH));
 
         return new GridGeometry(gridX, gridY, gridW, gridH, headerH);
@@ -473,9 +489,9 @@ public class GuiSpellArchive extends GuiContainer {
      * @param anyHasNext Whether there are more pages after the current one
      */
     private void placePaginationButtons(boolean anyHasNext) {
-        int arrowsY = leftPanelY + leftPanelH - GuiStyle.BOTTOM_BAR_HEIGHT / 2 - GuiStyle.ARROWS_Y_OFFSET;
-        int prevX = leftPanelX + GuiStyle.GRID_INNER_PADDING;
-        int nextX = leftPanelX + leftPanelW - GuiStyle.GRID_INNER_PADDING - GuiStyle.NAV_BUTTON_SIZE;
+        int arrowsY = leftPanelY + leftPanelH - ClientConfig.BOTTOM_BAR_HEIGHT / 2 - ClientConfig.ARROWS_Y_OFFSET;
+        int prevX = leftPanelX + ClientConfig.GRID_INNER_PADDING;
+        int nextX = leftPanelX + leftPanelW - ClientConfig.GRID_INNER_PADDING - ClientConfig.NAV_BUTTON_SIZE;
 
         if (prevButton != null && nextButton != null) {
             prevButton.x = prevX;
@@ -493,26 +509,26 @@ public class GuiSpellArchive extends GuiContainer {
      * Computes geometry and renders the identification scroll slot between prev/next buttons.
      */
     private void computeAndRenderScrollSlot(int mouseX, int mouseY) {
-        int barY = leftPanelY + leftPanelH - GuiStyle.BOTTOM_BAR_HEIGHT / 2 - GuiStyle.ARROWS_Y_OFFSET;
-        int prevX = leftPanelX + GuiStyle.GRID_INNER_PADDING;
-        int nextX = leftPanelX + leftPanelW - GuiStyle.GRID_INNER_PADDING - GuiStyle.NAV_BUTTON_SIZE;
+        int barY = leftPanelY + leftPanelH - ClientConfig.BOTTOM_BAR_HEIGHT / 2 - ClientConfig.ARROWS_Y_OFFSET;
+        int prevX = leftPanelX + ClientConfig.GRID_INNER_PADDING;
+        int nextX = leftPanelX + leftPanelW - ClientConfig.GRID_INNER_PADDING - ClientConfig.NAV_BUTTON_SIZE;
 
-        int prevRight = prevX + GuiStyle.NAV_BUTTON_SIZE;
-        int gapLeft = prevRight + GuiStyle.SCROLL_SLOT_SIDE_GAP;
-        int gapRight = nextX - GuiStyle.SCROLL_SLOT_SIDE_GAP;
-        int slotSize = Math.min(Math.min(GuiStyle.NAV_BUTTON_SIZE, gapRight - gapLeft), Math.max(8, GuiStyle.SCROLL_SLOT_MAX_SIZE));
+        int prevRight = prevX + ClientConfig.NAV_BUTTON_SIZE;
+        int gapLeft = prevRight + ClientConfig.SCROLL_SLOT_SIDE_GAP;
+        int gapRight = nextX - ClientConfig.SCROLL_SLOT_SIDE_GAP;
+        int slotSize = Math.min(Math.min(ClientConfig.NAV_BUTTON_SIZE, gapRight - gapLeft), Math.max(8, ClientConfig.SCROLL_SLOT_MAX_SIZE));
 
         // Center slot vertically on the same baseline as nav buttons
         scrollSlotX = gapLeft + (gapRight - gapLeft - slotSize) / 2;
-        scrollSlotY = barY + (GuiStyle.NAV_BUTTON_SIZE - slotSize) / 2;
+        scrollSlotY = barY + (ClientConfig.NAV_BUTTON_SIZE - slotSize) / 2;
         scrollSlotW = slotSize;
         scrollSlotH = slotSize;
 
         // Draw background
         scrollSlotEnabled = isScrollSlotEnabled();
-        int fill = scrollSlotEnabled ? GuiStyle.SCROLL_SLOT_BG : GuiStyle.SCROLL_SLOT_BG_DISABLED;
-        int border = scrollSlotEnabled ? GuiStyle.SCROLL_SLOT_BORDER : GuiStyle.SCROLL_SLOT_BORDER_DISABLED;
-        drawRoundedPanel(scrollSlotX, scrollSlotY, scrollSlotW, scrollSlotH, GuiStyle.SCROLL_SLOT_RADIUS, fill, border);
+        int fill = scrollSlotEnabled ? ClientConfig.SCROLL_SLOT_BG : ClientConfig.SCROLL_SLOT_BG_DISABLED;
+        int border = scrollSlotEnabled ? ClientConfig.SCROLL_SLOT_BORDER : ClientConfig.SCROLL_SLOT_BORDER_DISABLED;
+        drawRoundedPanel(scrollSlotX, scrollSlotY, scrollSlotW, scrollSlotH, ClientConfig.SCROLL_SLOT_RADIUS, fill, border);
 
         // Draw stack/icon and count if available
         int count = tile.getIdentificationScrollCountPublic();
@@ -550,10 +566,10 @@ public class GuiSpellArchive extends GuiContainer {
         boolean hover = mouseX >= scrollSlotX && mouseX < scrollSlotX + scrollSlotW && mouseY >= scrollSlotY && mouseY < scrollSlotY + scrollSlotH;
         if (hover) {
             if (scrollSlotEnabled) {
-                drawRect(scrollSlotX, scrollSlotY, scrollSlotX + scrollSlotW, scrollSlotY + 1, GuiStyle.HOVER_BORDER);
-                drawRect(scrollSlotX, scrollSlotY + scrollSlotH - 1, scrollSlotX + scrollSlotW, scrollSlotY + scrollSlotH, GuiStyle.HOVER_BORDER);
-                drawRect(scrollSlotX, scrollSlotY, scrollSlotX + 1, scrollSlotY + scrollSlotH, GuiStyle.HOVER_BORDER);
-                drawRect(scrollSlotX + scrollSlotW - 1, scrollSlotY, scrollSlotX + scrollSlotW, scrollSlotY + scrollSlotH, GuiStyle.HOVER_BORDER);
+                drawRect(scrollSlotX, scrollSlotY, scrollSlotX + scrollSlotW, scrollSlotY + 1, ClientConfig.HOVER_BORDER);
+                drawRect(scrollSlotX, scrollSlotY + scrollSlotH - 1, scrollSlotX + scrollSlotW, scrollSlotY + scrollSlotH, ClientConfig.HOVER_BORDER);
+                drawRect(scrollSlotX, scrollSlotY, scrollSlotX + 1, scrollSlotY + scrollSlotH, ClientConfig.HOVER_BORDER);
+                drawRect(scrollSlotX + scrollSlotW - 1, scrollSlotY, scrollSlotX + scrollSlotW, scrollSlotY + scrollSlotH, ClientConfig.HOVER_BORDER);
             }
 
             List<String> tip = new ArrayList<>();
@@ -592,7 +608,7 @@ public class GuiSpellArchive extends GuiContainer {
             List<BookEntry> slice = dr.rows.get(idx);
 
             // Groove background; shrink width to just cover the books in this row
-            int grooveW = Math.min(gg.gridW, 1 + gridCols * (cellW + GuiStyle.SPINE_LEFT_BORDER));
+            int grooveW = Math.min(gg.gridW, 1 + gridCols * (cellW + ClientConfig.SPINE_LEFT_BORDER));
             drawRowGroove(gg.gridX, baseY, grooveW, cellH);
 
             // Tier header
@@ -609,22 +625,22 @@ public class GuiSpellArchive extends GuiContainer {
                 }
 
                 String tierPlain = TextFormatting.getTextWithoutFormattingCodes(tierText);
-                int tabPadX = GuiStyle.TAB_PADDING_X;
+                int tabPadX = ClientConfig.TAB_PADDING_X;
                 int tabW = fontRenderer.getStringWidth(tierPlain) + tabPadX * 2;
                 int tabH = gg.headerH;
                 int headerY = baseY - gg.headerH + 1;
-                int tabX = gg.gridX + GuiStyle.TAB_OFFSET_X;
+                int tabX = gg.gridX + ClientConfig.TAB_OFFSET_X;
 
                 int fill = (0xCC << 24) | (rarityRGB & 0xFFFFFF);
                 int border = 0xFF000000 | TextUtils.darkenColor(rarityRGB, 0.6f);
-                drawRoundedPanel(tabX, headerY, tabW, tabH, GuiStyle.TAB_RADIUS, fill, border);
-                fontRenderer.drawString(tierPlain, tabX + tabPadX, headerY + GuiStyle.HEADER_TEXT_OFFSET_Y, 0x000000);
+                drawRoundedPanel(tabX, headerY, tabW, tabH, ClientConfig.TAB_RADIUS, fill, border);
+                fontRenderer.drawString(tierPlain, tabX + tabPadX, headerY + ClientConfig.HEADER_TEXT_OFFSET_Y, 0x000000);
             }
 
             // Books in this row
             for (int i = 0; i < slice.size(); i++) {
                 BookEntry b = slice.get(i);
-                int x = gg.gridX + i * (cellW + GuiStyle.SPINE_LEFT_BORDER);
+                int x = gg.gridX + i * (cellW + ClientConfig.SPINE_LEFT_BORDER);
                 int y = baseY;
 
                 // Base spine color from element.getColour(), fallback to precomputed
@@ -640,46 +656,46 @@ public class GuiSpellArchive extends GuiContainer {
 
                 // Draw shaded spine texture, cached by (color, width, height)
                 int spineW = cellW;
-                int spineH = cellH - (GuiStyle.SPINE_TOP_BORDER + GuiStyle.SPINE_BOTTOM_BORDER); // leave top/bottom borders inside groove
+                int spineH = cellH - (ClientConfig.SPINE_TOP_BORDER + ClientConfig.SPINE_BOTTOM_BORDER); // leave top/bottom borders inside groove
                 if (spineW > 0 && spineH > 0) {
                     ResourceLocation eIcon = (repElem != null) ? repElem.getIcon() : null;
-                    ResourceLocation spineTex = DynamicTextureFactory.getOrCreateSpineTexture(elemColor & 0xFFFFFF, spineW, spineH, GuiStyle.SPINE_EMBED_ICON ? eIcon : null, GuiStyle.SPINE_ICON_SIZE);
+                    ResourceLocation spineTex = DynamicTextureFactory.getOrCreateSpineTexture(elemColor & 0xFFFFFF, spineW, spineH, ClientConfig.SPINE_EMBED_ICON ? eIcon : null, ClientConfig.SPINE_ICON_SIZE);
 
                     if (spineTex != null) {
                         this.mc.getTextureManager().bindTexture(spineTex);
                         GlStateManager.color(1f, 1f, 1f, 1f);
                         // Draw 1:1 without scaling artifacts
                         drawScaledCustomSizeModalRect(
-                                x + GuiStyle.SPINE_LEFT_BORDER,
-                                y + GuiStyle.SPINE_TOP_BORDER,
+                                x + ClientConfig.SPINE_LEFT_BORDER,
+                                y + ClientConfig.SPINE_TOP_BORDER,
                                 0, 0,
                                 spineW, spineH,
                                 spineW, spineH,
                                 spineW, spineH);
                     } else {
                         // Fallback to solid fill
-                        int lx = x + GuiStyle.SPINE_LEFT_BORDER;
-                        int ty = y + GuiStyle.SPINE_TOP_BORDER;
+                        int lx = x + ClientConfig.SPINE_LEFT_BORDER;
+                        int ty = y + ClientConfig.SPINE_TOP_BORDER;
                         int rx = lx + spineW;
                         int by = ty + spineH;
                         drawRect(lx, ty, rx, by, 0xFF000000 | elemColor);
                     }
 
                     // subtle 1px shadow under the spine for depth if theme enabled
-                    if (GuiStyle.isPanelThemingEnabled()) {
-                        int shadow = (0x22 << 24) | (GuiStyle.GROOVE_SH & 0x00FFFFFF);
-                        drawRect(x + GuiStyle.SPINE_LEFT_BORDER, y + GuiStyle.SPINE_TOP_BORDER + spineH, x + GuiStyle.SPINE_LEFT_BORDER + spineW, y + GuiStyle.SPINE_TOP_BORDER + spineH + 1, shadow);
+                    if (ClientConfig.isPanelThemingEnabled()) {
+                        int shadow = (0x22 << 24) | (ClientConfig.GROOVE_SH & 0x00FFFFFF);
+                        drawRect(x + ClientConfig.SPINE_LEFT_BORDER, y + ClientConfig.SPINE_TOP_BORDER + spineH, x + ClientConfig.SPINE_LEFT_BORDER + spineW, y + ClientConfig.SPINE_TOP_BORDER + spineH + 1, shadow);
                     }
                 }
 
-                if (mouseX >= x && mouseX < x + cellW + GuiStyle.SPINE_LEFT_BORDER && mouseY >= y && mouseY < y + cellH) {
+                if (mouseX >= x && mouseX < x + cellW + ClientConfig.SPINE_LEFT_BORDER && mouseY >= y && mouseY < y + cellH) {
                     hoveredEntry = b;
-                    int hoverBorder = GuiStyle.HOVER_BORDER;
+                    int hoverBorder = ClientConfig.HOVER_BORDER;
 
-                    drawRect(x, y, x + cellW + 1 + GuiStyle.SPINE_LEFT_BORDER, y + 1, hoverBorder);
-                    drawRect(x, y + cellH - 1, x + cellW + 1 + GuiStyle.SPINE_LEFT_BORDER, y + cellH, hoverBorder);
+                    drawRect(x, y, x + cellW + 1 + ClientConfig.SPINE_LEFT_BORDER, y + 1, hoverBorder);
+                    drawRect(x, y + cellH - 1, x + cellW + 1 + ClientConfig.SPINE_LEFT_BORDER, y + cellH, hoverBorder);
                     drawRect(x, y, x + 1, y + cellH, hoverBorder);
-                    drawRect(x + cellW + GuiStyle.SPINE_LEFT_BORDER, y, x + cellW + 1 + GuiStyle.SPINE_LEFT_BORDER, y + cellH, hoverBorder);
+                    drawRect(x + cellW + ClientConfig.SPINE_LEFT_BORDER, y, x + cellW + 1 + ClientConfig.SPINE_LEFT_BORDER, y + cellH, hoverBorder);
                 }
             }
         }
@@ -692,8 +708,8 @@ public class GuiSpellArchive extends GuiContainer {
      * @param hovered The BookEntry currently hovered over, or null if none
      */
     private void renderRightPanel(BookEntry hovered) {
-        int rightX = rightPanelX + GuiStyle.RIGHT_PANEL_INNER_MARGIN;
-        int rightY = rightPanelY + GuiStyle.RIGHT_PANEL_INNER_MARGIN;
+        int rightX = rightPanelX + ClientConfig.RIGHT_PANEL_INNER_MARGIN;
+        int rightY = rightPanelY + ClientConfig.RIGHT_PANEL_INNER_MARGIN;
 
         if (hovered == null) {
             cacheManager.clearCachedPresentation();
@@ -723,10 +739,10 @@ public class GuiSpellArchive extends GuiContainer {
     private void drawBookInfoFromPresentation(SpellPresentation p, int x, int y, int color) {
         drawHeader(p, x, y, color);
 
-        int rowY = y + GuiStyle.RIGHT_AFTER_HEADER_GAP;
+        int rowY = y + ClientConfig.RIGHT_AFTER_HEADER_GAP;
         rowY = drawElementLine(p, x, rowY, color);
         rowY = drawPropertiesLines(p, x, rowY);
-        rowY += GuiStyle.RIGHT_SECTION_GAP;
+        rowY += ClientConfig.RIGHT_SECTION_GAP;
 
         drawDescriptionAndIcon(p, x, rowY, color);
     }
@@ -744,12 +760,12 @@ public class GuiSpellArchive extends GuiContainer {
 
         drawHeader(p, x, y, color);
 
-        int rowY = y + GuiStyle.RIGHT_AFTER_HEADER_GAP;
+        int rowY = y + ClientConfig.RIGHT_AFTER_HEADER_GAP;
         rowY = drawElementLine(p, x, rowY, color);
         rowY = drawPropertiesLines(p, x, rowY);
 
         // space before description
-        rowY += GuiStyle.RIGHT_SECTION_GAP;
+        rowY += ClientConfig.RIGHT_SECTION_GAP;
 
         drawDescriptionAndIcon(p, x, rowY, color);
     }
@@ -845,15 +861,15 @@ public class GuiSpellArchive extends GuiContainer {
      */
     private void drawHeader(SpellPresentation p, int x, int y, int color) {
         String countStr = TextUtils.formatCompactCount(p.count) + "x ";
-        int textStartX = x + GuiStyle.RIGHT_TITLE_TEXT_GAP;
-        int rightContentRight = rightPanelX + rightPanelW - GuiStyle.RIGHT_PANEL_INNER_MARGIN;
+        int textStartX = x + ClientConfig.RIGHT_TITLE_TEXT_GAP;
+        int rightContentRight = rightPanelX + rightPanelW - ClientConfig.RIGHT_PANEL_INNER_MARGIN;
         int maxHeaderW = Math.max(0, rightContentRight - textStartX);
 
         // Use mixed font renderer for undiscovered spells to show glyphs
         String header = p.discovered ? p.headerName : "#" + p.headerName;  // mark as glyph text
         FontRenderer fontRendererInstance = p.discovered ? fontRenderer : ClientProxy.mixedFontRenderer;
-        int spaceLeft = Math.max(0, maxHeaderW - fontRendererInstance.getStringWidth(countStr) - 2);
-        String headerFitted = countStr + TextUtils.trimToWidth(fontRendererInstance, header, spaceLeft);
+        int spaceLeft = Math.max(0, maxHeaderW - 2);
+        String headerFitted = TextUtils.trimToWidth(fontRendererInstance, countStr + header, spaceLeft);
 
         RenderHelper.enableGUIStandardItemLighting();
         itemRender.renderItemAndEffectIntoGUI(p.stack, x, y);
@@ -872,17 +888,17 @@ public class GuiSpellArchive extends GuiContainer {
      */
     private int drawElementLine(SpellPresentation p, int x, int rowY, int color) {
         int colLeft = x;
-        int textLeft = x + GuiStyle.RIGHT_ELEMENT_ICON_SIZE + 4;
+        int textLeft = x + ClientConfig.RIGHT_ELEMENT_ICON_SIZE + 4;
 
         if (p.elementIcon != null) {
             this.mc.getTextureManager().bindTexture(p.elementIcon);
             GlStateManager.color(1f, 1f, 1f, 1f);
-            drawScaledCustomSizeModalRect(colLeft, rowY, 0, 0, 16, 16, GuiStyle.RIGHT_ELEMENT_ICON_SIZE, GuiStyle.RIGHT_ELEMENT_ICON_SIZE, 16, 16);
+            drawScaledCustomSizeModalRect(colLeft, rowY, 0, 0, 16, 16, ClientConfig.RIGHT_ELEMENT_ICON_SIZE, ClientConfig.RIGHT_ELEMENT_ICON_SIZE, 16, 16);
         }
 
         fontRenderer.drawString(p.elementName, textLeft, rowY, color);
 
-        return rowY + GuiStyle.RIGHT_LINE_GAP_MEDIUM;
+        return rowY + ClientConfig.RIGHT_LINE_GAP_MEDIUM;
     }
 
     /**
@@ -903,14 +919,14 @@ public class GuiSpellArchive extends GuiContainer {
             chargeStr = I18n.format("gui.spellarchives.charge_fmt", TextUtils.formatTimeTicks(p.chargeUpTime));
         }
 
-        fontRenderer.drawString(costStr, x, rowY, GuiStyle.DETAIL_TEXT);
-        rowY += GuiStyle.RIGHT_LINE_GAP_SMALL;
+        fontRenderer.drawString(costStr, x, rowY, ClientConfig.DETAIL_TEXT);
+        rowY += ClientConfig.RIGHT_LINE_GAP_SMALL;
 
-        fontRenderer.drawString(cooldownStr, x, rowY, GuiStyle.DETAIL_TEXT);
-        rowY += GuiStyle.RIGHT_LINE_GAP_SMALL;
+        fontRenderer.drawString(cooldownStr, x, rowY, ClientConfig.DETAIL_TEXT);
+        rowY += ClientConfig.RIGHT_LINE_GAP_SMALL;
 
-        fontRenderer.drawString(chargeStr, x, rowY, GuiStyle.DETAIL_TEXT);
-        rowY += GuiStyle.RIGHT_LINE_GAP_SMALL;
+        fontRenderer.drawString(chargeStr, x, rowY, ClientConfig.DETAIL_TEXT);
+        rowY += ClientConfig.RIGHT_LINE_GAP_SMALL;
 
         return rowY;
     }
@@ -924,13 +940,13 @@ public class GuiSpellArchive extends GuiContainer {
      */
     private void drawDescriptionAndIcon(SpellPresentation p, int x, int rowY, int color) {
         String desc = p.description != null ? p.description : "";
-        int maxW = rightPanelW - GuiStyle.RIGHT_PANEL_TEXT_SIDE_PAD * 2;
+        int maxW = rightPanelW - ClientConfig.RIGHT_PANEL_TEXT_SIDE_PAD * 2;
         int safeMaxW = Math.max(0, maxW);  // maxW may be negative if right panel is very narrow
         boolean showIcon = p.discovered && p.spellIcon != null;
-        int contentWidth = rightPanelW - GuiStyle.RIGHT_PANEL_INNER_MARGIN * 2;
+        int contentWidth = rightPanelW - ClientConfig.RIGHT_PANEL_INNER_MARGIN * 2;
         int iconW = showIcon ? contentWidth : 0;
         int iconH = iconW;
-        int bottomClamp = rightPanelY + rightPanelH - GuiStyle.RIGHT_BOTTOM_CLAMP_MARGIN - iconH - (showIcon ? 4 : 0);
+        int bottomClamp = rightPanelY + rightPanelH - ClientConfig.RIGHT_BOTTOM_CLAMP_MARGIN - iconH - (showIcon ? 4 : 0);
 
         if (safeMaxW > 0 && desc.length() > 0) {
             FontRenderer fontRendererInstance = p.discovered ? fontRenderer : ClientProxy.mixedFontRenderer;
@@ -939,24 +955,24 @@ public class GuiSpellArchive extends GuiContainer {
             String safeDesc = TextUtils.sanitizeForBreakIterator(desc);
 
             for (String line : TextUtils.wrapTextToWidth(fontRendererInstance, safeDesc, safeMaxW)) {
-                if (rowY + GuiStyle.RIGHT_DESC_LINE_HEIGHT > bottomClamp) break;
+                if (rowY + ClientConfig.RIGHT_DESC_LINE_HEIGHT > bottomClamp) break;
                 if (!p.discovered) line = "#" + line;  // mark as glyph text
 
                 fontRendererInstance.drawString(line, x, rowY, color);
-                rowY += GuiStyle.RIGHT_DESC_LINE_HEIGHT;
+                rowY += ClientConfig.RIGHT_DESC_LINE_HEIGHT;
             }
         }
 
         if (showIcon) {
-            int iconX = rightPanelX + GuiStyle.RIGHT_PANEL_INNER_MARGIN;
-            int iconY = rightPanelY + rightPanelH - GuiStyle.RIGHT_BOTTOM_CLAMP_MARGIN - iconH;
+            int iconX = rightPanelX + ClientConfig.RIGHT_PANEL_INNER_MARGIN;
+            int iconY = rightPanelY + rightPanelH - ClientConfig.RIGHT_BOTTOM_CLAMP_MARGIN - iconH;
             this.mc.getTextureManager().bindTexture(p.spellIcon);
             GlStateManager.color(1f, 1f, 1f, 1f);
             drawScaledCustomSizeModalRect(iconX, iconY, 0, 0, 16, 16, iconW, iconH, 16, 16);
         }
 
         // Instructions block: position immediately above the icon (if visible) or at the bottom of the right panel.
-        int instColor = GuiStyle.DETAIL_TEXT;
+        int instColor = ClientConfig.DETAIL_TEXT;
         String inst1 = I18n.format("gui.spellarchives.inst.left_extract");
         String inst2 = I18n.format("gui.spellarchives.inst.shift_left_stack", p.stack.getMaxStackSize());
         String inst3;
@@ -985,12 +1001,12 @@ public class GuiSpellArchive extends GuiContainer {
             if (inst3 != null && !inst3.isEmpty()) wrappedInst3.addAll(TextUtils.wrapTextToWidth(fontRenderer, inst3, safeMaxW));
         }
 
-        int lineGap = GuiStyle.RIGHT_LINE_GAP_SMALL;
-        int minAllowed = rowY + GuiStyle.RIGHT_SECTION_GAP / 2;
+        int lineGap = ClientConfig.RIGHT_LINE_GAP_SMALL;
+        int minAllowed = rowY + ClientConfig.RIGHT_SECTION_GAP / 2;
 
         // No icon: bottom alignment to the panel bottom/top of icon. inst3 has priority, then inst2, then inst1.
         if (showIcon) {
-            int iconTopY = rightPanelY + rightPanelH - GuiStyle.RIGHT_BOTTOM_CLAMP_MARGIN - iconH;
+            int iconTopY = rightPanelY + rightPanelH - ClientConfig.RIGHT_BOTTOM_CLAMP_MARGIN - iconH;
             int desiredBottom = iconTopY - 2; // small gap above icon
 
             int availablePixels = Math.max(0, desiredBottom - minAllowed);
@@ -1022,7 +1038,7 @@ public class GuiSpellArchive extends GuiContainer {
                 }
             }
         } else {
-            int bottomEdge = rightPanelY + rightPanelH - GuiStyle.RIGHT_BOTTOM_CLAMP_MARGIN; // stick to panel bottom
+            int bottomEdge = rightPanelY + rightPanelH - ClientConfig.RIGHT_BOTTOM_CLAMP_MARGIN; // stick to panel bottom
             int availablePixels = Math.max(0, bottomEdge - minAllowed);
             int availableLines = availablePixels / lineGap;
 
@@ -1156,9 +1172,9 @@ public class GuiSpellArchive extends GuiContainer {
      * @param h the height of the groove
      */
     private void drawRowGroove(int x, int y, int w, int h) {
-        int base = GuiStyle.GROOVE_BASE;    // slightly darker so it pops
-        int hl = GuiStyle.GROOVE_HL;        // top highlight
-        int sh = GuiStyle.GROOVE_SH;        // bottom shadow
+        int base = ClientConfig.GROOVE_BASE;    // slightly darker so it pops
+        int hl = ClientConfig.GROOVE_HL;        // top highlight
+        int sh = ClientConfig.GROOVE_SH;        // bottom shadow
 
         drawRect(x, y, x + w, y + h, base);
         drawRect(x, y, x + w, y + 1, hl);

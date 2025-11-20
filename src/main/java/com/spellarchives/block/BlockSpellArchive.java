@@ -95,7 +95,7 @@ public class BlockSpellArchive extends BlockContainer implements IDismantleable 
     /**
      * Advertise that this block supports horizontal rotations via tools. Returning the four
      * horizontal faces allows wrenches to attempt rotation rather than remove/re-place.
-     * 
+     *
      * @param world World containing the block (not used).
      * @param pos Position of the block (not used).
      */

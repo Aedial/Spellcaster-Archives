@@ -28,7 +28,7 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.Side;
 
 import com.spellarchives.SpellArchives;
-import com.spellarchives.render.DynamicTextureFactory;
+import com.spellarchives.client.DynamicTextureFactory;
 
 import electroblob.wizardry.constants.Element;
 import electroblob.wizardry.spell.Spell;
@@ -123,7 +123,7 @@ public final class WizardryTextureStitcher {
 
         // Randomly assign elements to corners and select runes
         Random rand = new Random();
-        
+
         // Shuffle elements for corner assignment (7 elements, 1 will repeat)
         List<String> elementList = new ArrayList<>(Arrays.asList(ELEMENTS));
         Collections.shuffle(elementList, rand);
@@ -170,15 +170,15 @@ public final class WizardryTextureStitcher {
         Collections.shuffle(allSpellIcons, rand);
         for (int i = 0; i < 3 && i < allSpellIcons.size(); i++) {
             coreSideSpellIcons[i] = allSpellIcons.get(i);
-            
-            // Convert spell icon path for registration: 
+
+            // Convert spell icon path for registration
             // Icon is "modid:textures/spells/name.png", registerSprite needs "modid:spells/name"
             String path = coreSideSpellIcons[i].getPath();
             if (path.startsWith("textures/")) path = path.substring("textures/".length());
             if (path.endsWith(".png")) path = path.substring(0, path.length() - 4);
 
             ResourceLocation spriteLocation = new ResourceLocation(coreSideSpellIcons[i].getNamespace(), path);
-            
+
             // Register the icon as a sprite in the block atlas
             map.registerSprite(spriteLocation);
         }

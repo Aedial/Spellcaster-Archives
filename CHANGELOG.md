@@ -7,6 +7,15 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Keep a Changelog: https://keepachangelog.com/en/1.1.0/
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
+## [0.4.6] - 2025-11-19
+### Added
+- Add "Easy layout" toggle in config, that will try to automatically adjust the right panel width.
+  - When enabled, the right panel width will be set to fit all spell content, up to a maximum of 65% of GUI width.
+  - It will try to fit the name fully without ellipsis, up to 50% of GUI width.
+
+### Fixed
+- Fix issue of books list not being shifted far enough on non-zero pages, causing a noticeable overlap of books between pages.
+
 ## [0.4.5] - 2025-11-17
 ### Fixed
 - Fix Spell books from other mods using ebwizardry Spell books, resulting in broken books and not being able to extract them correctly.

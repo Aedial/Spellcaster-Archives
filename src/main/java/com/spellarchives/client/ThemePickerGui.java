@@ -10,7 +10,7 @@ import net.minecraft.client.resources.I18n;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
 
-import com.spellarchives.gui.GuiStyle;
+import com.spellarchives.config.ClientConfig;
 
 
 public class ThemePickerGui extends GuiScreen {
@@ -71,30 +71,30 @@ public class ThemePickerGui extends GuiScreen {
     private void applyThemeInMemory(String theme, boolean left) {
         if (theme == null) {
             // reload explicit colors (do not write presets)
-            GuiStyle.reloadFromConfig();
+            ClientConfig.reloadFromConfig();
             return;
         }
 
-        Map<String, Integer> m = GuiStyle.computeThemePresetColors(theme, left);
+        Map<String, Integer> m = ClientConfig.computeThemePresetColors(theme, left);
         for (Map.Entry<String, Integer> e : m.entrySet()) {
             // write into configuration in-memory so the GUI reflects it immediately
             String key = e.getKey();
             int val = e.getValue();
             Property prop = ClientConfig.getConfiguration().getCategory("gui").get(key);
             if (prop != null && prop.getType() == Property.Type.STRING) {
-                String hex = String.format("0x%08X", GuiStyle.clampColor(val));
+                String hex = String.format("0x%08X", ClientConfig.clampColor(val));
                 ClientConfig.getConfiguration().get("gui", key, hex).set(hex);
             } else {
                 ClientConfig.getConfiguration().get("gui", key, val).set(val);
             }
         }
 
-        Map<String, Float> pm = GuiStyle.computePanelThemeParams(theme);
+        Map<String, Float> pm = ClientConfig.computePanelThemeParams(theme);
         for (Map.Entry<String, Float> p : pm.entrySet()) {
             ClientConfig.getConfiguration().get("gui", p.getKey(), p.getValue()).set(p.getValue());
         }
 
-        GuiStyle.reloadFromConfig();
+        ClientConfig.reloadFromConfig();
     }
 
     @Override

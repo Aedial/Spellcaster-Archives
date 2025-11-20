@@ -1,4 +1,4 @@
-package com.spellarchives.render;
+package com.spellarchives.client;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -15,13 +15,13 @@ import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.util.ResourceLocation;
 
-import com.spellarchives.gui.GuiStyle;
+import com.spellarchives.config.ClientConfig;
 import com.spellarchives.util.TextUtils;
 
 
 /**
  * Centralized factory for dynamic textures used by the GUI. Caches textures and invalidates
- * them automatically when relevant configuration changes (tracked via GuiStyle.CONFIG_REVISION).
+ * them automatically when relevant configuration changes (tracked via ClientConfig.CONFIG_REVISION).
  */
 public final class DynamicTextureFactory {
     private DynamicTextureFactory() {}
@@ -31,7 +31,7 @@ public final class DynamicTextureFactory {
     private static int cacheRevision = -1;
 
     private static void checkRevision() {
-        if (cacheRevision != GuiStyle.CONFIG_REVISION) {
+        if (cacheRevision != ClientConfig.CONFIG_REVISION) {
             // Attempt to delete previously registered dynamic textures from the texture manager
             TextureManager tm = Minecraft.getMinecraft().getTextureManager();
             for (ResourceLocation rl : spineCache.values()) tm.deleteTexture(rl);
@@ -39,7 +39,7 @@ public final class DynamicTextureFactory {
 
             spineCache.clear();
             bgCache.clear();
-            cacheRevision = GuiStyle.CONFIG_REVISION;
+            cacheRevision = ClientConfig.CONFIG_REVISION;
         }
     }
 
@@ -56,7 +56,7 @@ public final class DynamicTextureFactory {
      */
     public static ResourceLocation getOrCreateSpineTexture(int baseRgb, int w, int h, ResourceLocation iconRl, int iconSize) {
         checkRevision();
-        String key = baseRgb + "_" + w + "x" + h + (iconRl != null && GuiStyle.SPINE_EMBED_ICON ? ("|icon=" + iconRl.toString() + "|s=" + iconSize) : "");
+        String key = baseRgb + "_" + w + "x" + h + (iconRl != null && ClientConfig.SPINE_EMBED_ICON ? ("|icon=" + iconRl.toString() + "|s=" + iconSize) : "");
         ResourceLocation existing = spineCache.get(key);
         if (existing != null) return existing;
         // Full generator: curvature, vertical shading, deterministic noise, optional bands and icon embedding
@@ -89,17 +89,17 @@ public final class DynamicTextureFactory {
         // Off-center bias for spine curvature
         float centerBias = 0.5f + (rf.apply(s1) - 0.5f) * 0.18f; // 0.32..0.68
         centerBias = Math.max(0.3f, Math.min(0.7f, centerBias));
-        float asymTilt = GuiStyle.SPINE_ENABLE_TILT ? (rf.apply(s2) - 0.5f) * 0.12f : 0f; // -0.06..0.06
-        float noiseAmp = GuiStyle.SPINE_ENABLE_NOISE ? GuiStyle.SPINE_NOISE_AMPLITUDE : 0f; // +/- percentage noise
+        float asymTilt = ClientConfig.SPINE_ENABLE_TILT ? (rf.apply(s2) - 0.5f) * 0.12f : 0f; // -0.06..0.06
+        float noiseAmp = ClientConfig.SPINE_ENABLE_NOISE ? ClientConfig.SPINE_NOISE_AMPLITUDE : 0f; // +/- percentage noise
 
         // Two horizontal bands near the top of available area above icon reserve
-        int iconReserve = GuiStyle.SPINE_ICON_SIZE + GuiStyle.SPINE_ICON_BOTTOM_MARGIN; // reserve for bottom icon area
+        int iconReserve = ClientConfig.SPINE_ICON_SIZE + ClientConfig.SPINE_ICON_BOTTOM_MARGIN; // reserve for bottom icon area
         int available = Math.max(0, h - iconReserve);
-        int bandThickness = GuiStyle.SPINE_BAND_THICKNESS;
-        int bandGap = GuiStyle.SPINE_BAND_GAP;
+        int bandThickness = ClientConfig.SPINE_BAND_THICKNESS;
+        int bandGap = ClientConfig.SPINE_BAND_GAP;
 
         // Place bands starting at top with a small top space
-        int band1 = available > 0 ? Math.min(available - bandThickness, GuiStyle.SPINE_BAND_TOP_SPACE) : -1;
+        int band1 = available > 0 ? Math.min(available - bandThickness, ClientConfig.SPINE_BAND_TOP_SPACE) : -1;
         int band2 = band1 >= 0 ? Math.min(available - bandThickness, band1 + bandThickness + bandGap) : -1;
 
         for (int y = 0; y < h; y++) {
@@ -109,15 +109,15 @@ public final class DynamicTextureFactory {
                 float dist = Math.abs(nx - centerBias) * 2f; // 0 center -> ~1 edges
                 float side = Math.signum(nx - centerBias);
                 dist *= (1f + asymTilt * side);
-                float shade = GuiStyle.SPINE_ENABLE_CURVATURE
-                    ? (GuiStyle.SPINE_CENTER_BRIGHTEN - GuiStyle.SPINE_EDGE_FACTOR * dist)
+                float shade = ClientConfig.SPINE_ENABLE_CURVATURE
+                    ? (ClientConfig.SPINE_CENTER_BRIGHTEN - ClientConfig.SPINE_EDGE_FACTOR * dist)
                     : 1.0f;
                 int rgb = TextUtils.darkenColor(baseRgb, shade);
 
                 // Subtle horizontal roll-off towards top/bottom
                 float ny = (y + 0.5f) / h;
                 float edgeY = Math.min(ny, 1f - ny) * 2f; // 0 at edges, 1 at center
-                float vshade = GuiStyle.SPINE_VSHADE_BASE + GuiStyle.SPINE_VSHADE_RANGE * edgeY; // darker near top/bottom
+                float vshade = ClientConfig.SPINE_VSHADE_BASE + ClientConfig.SPINE_VSHADE_RANGE * edgeY; // darker near top/bottom
                 rgb = TextUtils.darkenColor(rgb, vshade);
 
                 // Per-pixel noise to break uniformity (deterministic)
@@ -131,36 +131,36 @@ public final class DynamicTextureFactory {
         }
 
         // Apply horizontal bands post-pass for clean thin lines (darken slightly)
-        if (GuiStyle.SPINE_ENABLE_BANDS && band1 >= 0) {
+        if (ClientConfig.SPINE_ENABLE_BANDS && band1 >= 0) {
             for (int x = 0; x < w; x++) {
                 for (int dy = 0; dy < bandThickness; dy++) { // 2px thickness
                     int yy = band1 + dy;
                     if (yy >= 0 && yy < h) {
                         int idx = yy * w + x;
                         int rgb = pixels[idx] & 0xFFFFFF;
-                        pixels[idx] = 0xFF000000 | (TextUtils.darkenColor(rgb, GuiStyle.SPINE_BAND1_DARKEN) & 0xFFFFFF);
+                        pixels[idx] = 0xFF000000 | (TextUtils.darkenColor(rgb, ClientConfig.SPINE_BAND1_DARKEN) & 0xFFFFFF);
                     }
                 }
             }
         }
 
-        if (GuiStyle.SPINE_ENABLE_BANDS && band2 >= 0) {
+        if (ClientConfig.SPINE_ENABLE_BANDS && band2 >= 0) {
             for (int x = 0; x < w; x++) {
                 for (int dy = 0; dy < bandThickness; dy++) {
                     int yy = band2 + dy;
                     if (yy >= 0 && yy < h) {
                         int idx = yy * w + x;
                         int rgb = pixels[idx] & 0xFFFFFF;
-                        pixels[idx] = 0xFF000000 | (TextUtils.darkenColor(rgb, GuiStyle.SPINE_BAND2_DARKEN) & 0xFFFFFF);
+                        pixels[idx] = 0xFF000000 | (TextUtils.darkenColor(rgb, ClientConfig.SPINE_BAND2_DARKEN) & 0xFFFFFF);
                     }
                 }
             }
         }
 
         // Optionally embed the element icon into the spine texture (bottom-centered)
-        if (GuiStyle.SPINE_EMBED_ICON && iconRl != null && iconSize > 0) {
+        if (ClientConfig.SPINE_EMBED_ICON && iconRl != null && iconSize > 0) {
             int ix = (w - iconSize) / 2;
-            int iy = (h - iconSize - GuiStyle.SPINE_ICON_BOTTOM_MARGIN) + GuiStyle.SPINE_ICON_Y_OFFSET;
+            int iy = (h - iconSize - ClientConfig.SPINE_ICON_BOTTOM_MARGIN) + ClientConfig.SPINE_ICON_Y_OFFSET;
 
             if (ix >= 0 && iy >= 0 && ix + iconSize <= w && iy + iconSize <= h) {
                 try {
@@ -228,12 +228,12 @@ public final class DynamicTextureFactory {
     public static ResourceLocation getOrCreatePanelBg(int w, int h) {
         checkRevision();
 
-        String key = "bg_" + w + "x" + h + "_rev" + GuiStyle.CONFIG_REVISION;
+        String key = "bg_" + w + "x" + h + "_rev" + ClientConfig.CONFIG_REVISION;
         ResourceLocation existing = bgCache.get(key);
         if (existing != null) return existing;
 
-        int topColor = GuiStyle.BACKGROUND_FILL;
-        int bottomColor = GuiStyle.BACKGROUND_BORDER;
+        int topColor = ClientConfig.BACKGROUND_FILL;
+        int bottomColor = ClientConfig.BACKGROUND_BORDER;
         int[] pixels = new int[w * h];
         for (int y = 0; y < h; y++) {
             float t = y / (float)Math.max(1, h - 1);

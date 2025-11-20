@@ -3,8 +3,7 @@ package com.spellarchives.client;
 import net.minecraftforge.common.MinecraftForge;
 
 import com.spellarchives.CommonProxy;
-import com.spellarchives.client.ClientConfig;
-import com.spellarchives.gui.GuiStyle;
+import com.spellarchives.config.ClientConfig;
 import com.spellarchives.registry.ClientModels;
 
 
@@ -22,6 +21,5 @@ public class ClientProxy extends CommonProxy {
 
         // Initialize client-side config and apply GUI style overrides
         ClientConfig.init();
-        GuiStyle.reloadFromConfig();
     }
 }

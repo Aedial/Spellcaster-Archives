@@ -14,7 +14,7 @@ import net.minecraft.client.resources.I18n;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
 
-import com.spellarchives.gui.GuiStyle;
+import com.spellarchives.config.ClientConfig;
 
 
 // Details screen for a single theme. Shows color swatches and per-color Apply buttons.
@@ -44,7 +44,7 @@ public class ThemeDetailsGui extends GuiScreen {
 
         if (theme == null) return;
 
-        Map<String, Integer> m = GuiStyle.computeThemePresetColors(theme, leftPanel);
+        Map<String, Integer> m = ClientConfig.computeThemePresetColors(theme, leftPanel);
         for (Map.Entry<String, Integer> e : m.entrySet()) {
             colorKeys.add(e.getKey());
             colorValues.add(e.getValue());
@@ -74,7 +74,7 @@ public class ThemeDetailsGui extends GuiScreen {
             if (idx >= 0 && idx < colorKeys.size()) {
                 String key = colorKeys.get(idx);
                 int val = colorValues.get(idx);
-                String hex = String.format("0x%08X", GuiStyle.clampColor(val));
+                String hex = String.format("0x%08X", ClientConfig.clampColor(val));
 
                 // write to string property if necessary
                 Property p = cfg.getCategory("gui").get(key);
@@ -84,14 +84,14 @@ public class ThemeDetailsGui extends GuiScreen {
                     cfg.get("gui", key, val).set(val);
                 }
 
-                GuiStyle.reloadFromConfig();
+                ClientConfig.reloadFromConfig();
             }
         } else if (button.id == BTN_APPLY_ALL) {
             // apply all keys
             for (int i = 0; i < colorKeys.size(); i++) {
                 String key = colorKeys.get(i);
                 int val = colorValues.get(i);
-                String hex = String.format("0x%08X", GuiStyle.clampColor(val));
+                String hex = String.format("0x%08X", ClientConfig.clampColor(val));
 
                 Property p = cfg.getCategory("gui").get(key);
                 if (p != null && p.getType() == Property.Type.STRING) {
@@ -101,7 +101,7 @@ public class ThemeDetailsGui extends GuiScreen {
                 }
             }
 
-            GuiStyle.reloadFromConfig();
+            ClientConfig.reloadFromConfig();
         } else if (button.id == BTN_BACK) {
             this.mc.displayGuiScreen(parent);
         }
@@ -126,7 +126,7 @@ public class ThemeDetailsGui extends GuiScreen {
             int swY = y;
             int swW = 40;
             int swH = 18;
-            int color = GuiStyle.clampColor(val);
+            int color = ClientConfig.clampColor(val);
             // draw a filled rectangle for color swatch
             drawRect(swX, swY, swX + swW, swY + swH, color);
 
