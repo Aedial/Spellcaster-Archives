@@ -3,9 +3,11 @@ package com.spellarchives.gui;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -16,6 +18,7 @@ import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 import org.lwjgl.opengl.GL11;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.inventory.GuiContainer;
@@ -66,6 +69,47 @@ public class GuiSpellArchive extends GuiContainer {
 
     private int page = 0;
 
+    private static final float FILTER_TEXT_SCALE = 1;
+    private static final int FILTER_HEADER_PADDING = 3;
+    private static final int FILTER_HEADER_GAP = 5;
+    private static final int FILTER_OPTION_HEIGHT = 8;
+    private static final int FILTERS_TOP_MARGIN = 2;
+    private static final int FILTERS_BOTTOM_GAP = 3;
+    private static final long DOUBLE_CLICK_MS = 300L;
+
+    private enum DiscoveryFilter {
+        ALL,
+        DISCOVERED,
+        UNDISCOVERED
+    }
+
+    private static class Rect {
+        int x;
+        int y;
+        int w;
+        int h;
+
+        Rect set(int x, int y, int w, int h) {
+            this.x = x;
+            this.y = y;
+            this.w = Math.max(0, w);
+            this.h = Math.max(0, h);
+
+            return this;
+        }
+
+        void clear() {
+            this.x = 0;
+            this.y = 0;
+            this.w = 0;
+            this.h = 0;
+        }
+
+        boolean contains(int px, int py) {
+            return px >= x && px < x + w && py >= y && py < y + h;
+        }
+    }
+
     private GuiButton prevButton;
     private GuiButton nextButton;
 
@@ -82,6 +126,24 @@ public class GuiSpellArchive extends GuiContainer {
     // Tooltip deferral so we can draw above buttons
     private List<String> pendingTooltip = null;
     private int pendingTipX = 0, pendingTipY = 0;
+
+    // Filter state and caches
+    private final Map<String, Integer> filteredSnapshot = new LinkedHashMap<>();
+    private final List<String> availableModOptions = new ArrayList<>();
+    private final Set<String> selectedModFilters = new LinkedHashSet<>();
+    private final Set<String> modsPresentInSnapshot = new LinkedHashSet<>();
+    private boolean modFilterTouched = false;
+
+    private DiscoveryFilter discoveryFilter = DiscoveryFilter.ALL;
+    private boolean discoveryDropdownOpen = false;
+    private boolean modsDropdownOpen = false;
+    private long lastModsHeaderClickMs = 0L;
+
+    private int filterBarX, filterBarY, filterBarW;
+    private final Rect discoveryHeaderRect = new Rect();
+    private final Rect discoveryContentRect = new Rect();
+    private final Rect modsHeaderRect = new Rect();
+    private final Rect modsContentRect = new Rect();
 
     // Helper value objects for layout computations
     public static class GridGeometry {
@@ -145,18 +207,26 @@ public class GuiSpellArchive extends GuiContainer {
         final int element;  // numeric sort key for element
         final int rarityColor;
         final int elementColor;
+        final boolean discovered;
+        final String modId;
+        final Spell spell;
 
-        BookEntry(ItemStack stack, int count, int tier, int element, int rarityColor, int elementColor) {
+        BookEntry(ItemStack stack, int count, int tier, int element, int rarityColor, int elementColor,
+                  boolean discovered, String modId, Spell spell) {
             this.stack = stack;
             this.count = count;
             this.tier = tier;
             this.element = element;
             this.rarityColor = rarityColor;
             this.elementColor = elementColor;
+            this.discovered = discovered;
+            this.modId = modId;
+            this.spell = spell;
         }
     }
 
     private List<BookEntry> entries = new ArrayList<>();
+    private List<BookEntry> unfilteredEntries = new ArrayList<>();
     private Map<Integer, List<BookEntry>> rowsByTier = new LinkedHashMap<>();
     private List<Integer> tierOrder = new ArrayList<>();
     private int lastChangeRev = -1;
@@ -201,9 +271,18 @@ public class GuiSpellArchive extends GuiContainer {
      */
     private void rebuildEntries() {
         entries.clear();
+        unfilteredEntries.clear();
         rowsByTier.clear();
         tierOrder.clear();
         cachedEasyWidth = -1;
+        filteredSnapshot.clear();
+        modsPresentInSnapshot.clear();
+
+        refreshKnownModOptions();
+
+        WizardData data = WizardData.get(player);
+        boolean creative = player != null && player.capabilities != null && player.capabilities.isCreativeMode;
+        boolean discoveryDisabled = !Wizardry.settings.discoveryMode;
 
         for (Map.Entry<String, Integer> e : tile.getSnapshot().entrySet()) {
             if (e.getValue() <= 0) continue;
@@ -211,7 +290,20 @@ public class GuiSpellArchive extends GuiContainer {
             ItemStack stack = tile.stackFromKeyPublic(e.getKey());
             if (stack.isEmpty()) continue;
 
-            entries.add(new BookEntry(stack, e.getValue(), tile.getTierOf(stack), tile.getElementOf(stack), tile.getRarityColor(stack), tile.getElementColor(stack)));
+            Spell spell = tile.getSpellPublic(stack);
+            boolean discovered = isSpellDiscoveredForFilters(spell, data, creative, discoveryDisabled);
+            String modId = getModId(stack);
+            modsPresentInSnapshot.add(modId);
+
+            BookEntry entry = new BookEntry(stack, e.getValue(), tile.getTierOf(stack), tile.getElementOf(stack),
+                    tile.getRarityColor(stack), tile.getElementColor(stack), discovered, modId, spell);
+
+            unfilteredEntries.add(entry);
+
+            if (!passesDiscoveryFilter(entry) || !passesModFilter(entry)) continue;
+
+            entries.add(entry);
+            filteredSnapshot.put(e.getKey(), e.getValue());
         }
 
         // Group by tier (rarity). Keep a stable order: tier ascending (Novice->Master)
@@ -225,6 +317,55 @@ public class GuiSpellArchive extends GuiContainer {
             rowsByTier.put(tier, list);
             tierOrder.add(tier);
         });
+    }
+
+    private void refreshKnownModOptions() {
+        List<String> mods = tile.getSpellModIdsPublic();
+        Collections.sort(mods);
+
+        availableModOptions.clear();
+        availableModOptions.addAll(mods);
+
+        if (!modFilterTouched) {
+            selectedModFilters.clear();
+            selectedModFilters.addAll(availableModOptions);
+        } else {
+            selectedModFilters.retainAll(availableModOptions);
+        }
+    }
+
+    private boolean passesDiscoveryFilter(BookEntry entry) {
+        if (discoveryFilter == DiscoveryFilter.ALL) return true;
+        if (discoveryFilter == DiscoveryFilter.DISCOVERED) return entry.discovered;
+
+        return !entry.discovered;
+    }
+
+    private boolean passesModFilter(BookEntry entry) {
+        if (availableModOptions.isEmpty()) return true;
+        if (!availableModOptions.contains(entry.modId)) return true;
+        if (selectedModFilters.isEmpty()) return !modFilterTouched;
+
+        return selectedModFilters.contains(entry.modId);
+    }
+
+    private boolean isSpellDiscoveredForFilters(Spell spell, WizardData data, boolean creative, boolean discoveryDisabled) {
+        if (spell == null) return false;
+        if (creative || discoveryDisabled) return true;
+        if (data == null) return false;
+
+        return data.hasSpellBeenDiscovered(spell);
+    }
+
+    private String getModId(ItemStack stack) {
+        ResourceLocation rl = stack.getItem().getRegistryName();
+        return rl != null ? rl.getNamespace() : "unknown";
+    }
+
+    private void onFiltersChanged() {
+        page = 0;
+        cacheManager.clearAll();
+        rebuildEntries();
     }
 
     /**
@@ -253,6 +394,7 @@ public class GuiSpellArchive extends GuiContainer {
         computePanels();
         renderBackgroundPanels();
         GridGeometry gg = computeGridGeometry();
+        renderFilterHeaders(mouseX, mouseY);
 
         // ensure caches are valid for current style revision
         cacheManager.checkStyleRevision(ClientConfig.CONFIG_REVISION);
@@ -262,11 +404,9 @@ public class GuiSpellArchive extends GuiContainer {
         boolean layoutChanged = (cachedGG == null) || gg.gridX != cachedGG.gridX || gg.gridY != cachedGG.gridY || gg.gridW != cachedGG.gridW || gg.gridH != cachedGG.gridH || gg.headerH != cachedGG.headerH;
         boolean colsChanged = cacheManager.haveColsChanged(gridCols);
 
-        boolean keysChanged = false;
         if (tileChanged) {
-            Set<String> currentKeys = getSnapshotKeys();
-            if (cacheManager.haveKeysChanged(currentKeys)) rebuildEntries();
-
+            rebuildEntries();
+            cacheManager.clearAll();
             lastChangeRev = rev;
         }
 
@@ -303,11 +443,12 @@ public class GuiSpellArchive extends GuiContainer {
 
         cacheManager.setHoveredEntry(hovered);
         renderRightPanel(hovered);
+
+        renderFilterDropdowns(mouseX, mouseY);
     }
 
     private Set<String> getSnapshotKeys() {
-        Map<String, Integer> snap = tile.getSnapshot();
-        return new HashSet<>(snap.keySet());
+        return new HashSet<>(filteredSnapshot.keySet());
     }
 
     private void computePanels() {
@@ -341,7 +482,7 @@ public class GuiSpellArchive extends GuiContainer {
     }
 
     private int computeEasyLayoutWidth() {
-        if (entries.isEmpty()) return ClientConfig.RIGHT_PANEL_MIN_WIDTH;
+        if (unfilteredEntries.isEmpty()) return ClientConfig.RIGHT_PANEL_MIN_WIDTH;
 
         // Try to derive minW from fitting title, between Right_PANEL_MIN_WIDTH and 50% of total width
         int title_gap = ClientConfig.RIGHT_TITLE_TEXT_GAP;
@@ -349,7 +490,7 @@ public class GuiSpellArchive extends GuiContainer {
 
         // Get the longest spell name
         int minW = ClientConfig.RIGHT_PANEL_MIN_WIDTH;
-        for (BookEntry entry : entries) {
+        for (BookEntry entry : unfilteredEntries) {
             Spell spell = tile.getSpellPublic(entry.stack);
             if (spell == null) continue;
 
@@ -385,7 +526,7 @@ public class GuiSpellArchive extends GuiContainer {
 
             int maxSpellOverflow = 0;
 
-            for (BookEntry entry : entries) {
+            for (BookEntry entry : unfilteredEntries) {
                 Spell spell = tile.getSpellPublic(entry.stack);
                 if (spell == null) continue;
 
@@ -449,16 +590,202 @@ public class GuiSpellArchive extends GuiContainer {
      */
     private GridGeometry computeGridGeometry() {
         int bottomBar = ClientConfig.BOTTOM_BAR_HEIGHT;
+        updateFilterLayout();
+
+        int reservedTop = discoveryHeaderRect.h + FILTERS_BOTTOM_GAP;
         int gridX = leftPanelX + ClientConfig.GRID_INNER_PADDING;
-        int gridY = leftPanelY + 8;
+        int gridY = leftPanelY + 8 + reservedTop;
         int gridW = leftPanelW - ClientConfig.GRID_INNER_PADDING * 2;
-        int gridH = leftPanelH - bottomBar - ClientConfig.LEFT_PANEL_BOTTOM_PAD;
+        int gridH = leftPanelH - bottomBar - ClientConfig.LEFT_PANEL_BOTTOM_PAD - reservedTop;
+        if (gridH < ClientConfig.GRID_INNER_PADDING) gridH = ClientConfig.GRID_INNER_PADDING;
 
         gridCols = Math.max(1, gridW / (cellW + ClientConfig.SPINE_LEFT_BORDER));
         int headerH = this.fontRenderer.FONT_HEIGHT + ClientConfig.HEADER_EXTRA;
         gridRows = Math.max(1, gridH / (cellH + rowGap + headerH));
 
         return new GridGeometry(gridX, gridY, gridW, gridH, headerH);
+    }
+
+    private void updateFilterLayout() {
+        filterBarX = leftPanelX + ClientConfig.GRID_INNER_PADDING;
+        filterBarY = leftPanelY + FILTERS_TOP_MARGIN;
+        filterBarW = Math.max(0, leftPanelW - ClientConfig.GRID_INNER_PADDING * 2);
+
+        // Split available width evenly between the two headers, with gap
+        int discoveryWidth = filterBarW / 2 - FILTER_HEADER_GAP / 2;
+        int modsWidth = filterBarW - discoveryWidth - FILTER_HEADER_GAP;
+
+        int textHeight = (int)(fontRenderer.FONT_HEIGHT * FILTER_TEXT_SCALE);
+
+        discoveryHeaderRect.set(filterBarX, filterBarY, discoveryWidth, textHeight);
+        modsHeaderRect.set(discoveryHeaderRect.x + discoveryHeaderRect.w + FILTER_HEADER_GAP, filterBarY, modsWidth, textHeight);
+
+        int discoveryContentH = DiscoveryFilter.values().length * FILTER_OPTION_HEIGHT + 4;
+        discoveryContentRect.set(discoveryHeaderRect.x, discoveryHeaderRect.y + discoveryHeaderRect.h, discoveryHeaderRect.w, discoveryContentH);
+
+        int modsOptions = Math.max(1, availableModOptions.isEmpty() ? 1 : availableModOptions.size());
+        int modsContentH = modsOptions * FILTER_OPTION_HEIGHT + 4;
+        modsContentRect.set(modsHeaderRect.x, modsHeaderRect.y + modsHeaderRect.h, modsHeaderRect.w, modsContentH);
+
+        if (modsHeaderRect.w <= 0 || modsHeaderRect.h <= 0) {
+            modsHeaderRect.clear();
+            modsContentRect.clear();
+        }
+    }
+
+    private void renderFilterHeaders(int mouseX, int mouseY) {
+        boolean discoveryHeaderHover = discoveryHeaderRect.contains(mouseX, mouseY);
+        boolean discoveryContentHover = discoveryDropdownOpen && discoveryContentRect.contains(mouseX, mouseY);
+        if (discoveryHeaderHover) discoveryDropdownOpen = true;
+        else if (discoveryDropdownOpen && !discoveryContentHover) discoveryDropdownOpen = false;
+
+        boolean modsHeaderHover = modsHeaderRect.contains(mouseX, mouseY);
+        boolean modsContentHover = modsDropdownOpen && modsContentRect.contains(mouseX, mouseY);
+        if (modsHeaderHover) modsDropdownOpen = true;
+        else if (modsDropdownOpen && !modsContentHover) modsDropdownOpen = false;
+
+        drawFilterHeader(discoveryHeaderRect, getDiscoveryHeaderText(), discoveryHeaderHover || discoveryDropdownOpen);
+        drawFilterHeader(modsHeaderRect, getModsHeaderText(), modsHeaderHover || modsDropdownOpen);
+    }
+
+    private void renderFilterDropdowns(int mouseX, int mouseY) {
+        float scale = FILTER_TEXT_SCALE;
+
+        if (discoveryDropdownOpen && discoveryContentRect.w > 0 && discoveryContentRect.h > 0) {
+            drawDropdownBackground(discoveryContentRect);
+
+            DiscoveryFilter[] options = DiscoveryFilter.values();
+            for (int i = 0; i < options.length; i++) {
+                int rowY = discoveryContentRect.y + 2 + i * FILTER_OPTION_HEIGHT;
+                boolean hover = mouseX >= discoveryContentRect.x && mouseX < discoveryContentRect.x + discoveryContentRect.w &&
+                                mouseY >= rowY && mouseY < rowY + FILTER_OPTION_HEIGHT;
+                drawFilterOptionRow(discoveryContentRect.x, rowY, discoveryContentRect.w, hover);
+                drawIndicator(discoveryContentRect.x + 4, rowY + 2, true, discoveryFilter == options[i]);
+
+                String label = I18n.format(getDiscoveryOptionKey(options[i]));
+                int maxWidthUnscaled = (int) ((discoveryContentRect.w - 16) / scale);
+                String trimmed = TextUtils.trimToWidth(fontRenderer, label, maxWidthUnscaled);
+
+                GL11.glPushMatrix();
+                GL11.glScalef(scale, scale, 1f);
+                fontRenderer.drawString(trimmed, (discoveryContentRect.x + 16) / scale, (rowY + 2) / scale, 0xFFFFFF, false);
+                GL11.glPopMatrix();
+            }
+        }
+
+        if (modsDropdownOpen && modsContentRect.w > 0 && modsContentRect.h > 0) {
+            drawDropdownBackground(modsContentRect);
+
+            if (availableModOptions.isEmpty()) {
+                String empty = I18n.format("gui.spellarchives.filter.mods.dropdown.empty");
+                int maxWidthUnscaled = (int) ((modsContentRect.w - FILTER_HEADER_PADDING * 2) / scale);
+                String trimmed = TextUtils.trimToWidth(fontRenderer, empty, maxWidthUnscaled);
+
+                GL11.glPushMatrix();
+                GL11.glScalef(scale, scale, 1f);
+                fontRenderer.drawString(trimmed, (modsContentRect.x + FILTER_HEADER_PADDING) / scale, (modsContentRect.y + 4) / scale, 0xCCCCCC, false);
+                GL11.glPopMatrix();
+            } else {
+                for (int i = 0; i < availableModOptions.size(); i++) {
+                    int rowY = modsContentRect.y + 2 + i * FILTER_OPTION_HEIGHT;
+                    boolean hover = mouseX >= modsContentRect.x && mouseX < modsContentRect.x + modsContentRect.w &&
+                                    mouseY >= rowY && mouseY < rowY + FILTER_OPTION_HEIGHT;
+                    String modId = availableModOptions.get(i);
+                    boolean selected = selectedModFilters.contains(modId);
+
+                    drawFilterOptionRow(modsContentRect.x, rowY, modsContentRect.w, hover);
+                    drawIndicator(modsContentRect.x + 4, rowY + 2, false, selected);
+
+                    int textColor = modsPresentInSnapshot.contains(modId) ? 0xFFFFFF : 0xAAAAAA;
+                    int maxWidthUnscaled = (int) ((modsContentRect.w - 18) / scale);
+                    String trimmed = TextUtils.trimToWidth(fontRenderer, modId, maxWidthUnscaled);
+
+                    GL11.glPushMatrix();
+                    GL11.glScalef(scale, scale, 1f);
+                    fontRenderer.drawString(trimmed, (modsContentRect.x + 16) / scale, (rowY + 2) / scale, textColor, false);
+                    GL11.glPopMatrix();
+                }
+            }
+        }
+    }
+
+    private void drawFilterHeader(Rect rect, String text, boolean active) {
+        if (rect.w <= 0 || rect.h <= 0) return;
+
+        int fill = active ? 0xAA222222 : 0x66000000;
+        int border = active ? ClientConfig.HOVER_BORDER : ClientConfig.RIGHT_PANEL_BORDER;
+        drawRoundedPanel(rect.x, rect.y, rect.w, rect.h, ClientConfig.PANEL_RADIUS, fill, border);
+
+        float scale = 0.5f;
+        int maxWidthUnscaled = (int) ((rect.w - FILTER_HEADER_PADDING * 2) / scale);
+        String fitted = TextUtils.trimToWidth(fontRenderer, text, maxWidthUnscaled);
+
+        GL11.glPushMatrix();
+        GL11.glScalef(scale, scale, 1f);
+        float textX = (rect.x + FILTER_HEADER_PADDING) / scale;
+        float textY = (rect.y + (rect.h - fontRenderer.FONT_HEIGHT * scale) / 2f) / scale;
+        fontRenderer.drawString(fitted, textX, textY, 0xFFFFFF, false);
+        GL11.glPopMatrix();
+    }
+
+    private void drawDropdownBackground(Rect rect) {
+        drawRoundedPanel(rect.x, rect.y, rect.w, rect.h, ClientConfig.PANEL_RADIUS, 0xCC111111, ClientConfig.RIGHT_PANEL_BORDER);
+    }
+
+    private void drawFilterOptionRow(int x, int y, int w, boolean hover) {
+        int fill = hover ? 0x44FFFFFF : 0x22000000;
+        drawRect(x + 1, y, x + w - 1, y + FILTER_OPTION_HEIGHT, fill);
+    }
+
+    private void drawIndicator(int x, int y, boolean radio, boolean selected) {
+        int size = 4;
+        int border = ClientConfig.RIGHT_PANEL_BORDER;
+        int fill = 0xFF2A2A2A;
+        drawRect(x, y, x + size, y + size, fill);
+        drawRect(x, y, x + size, y + 1, border);
+        drawRect(x, y + size - 1, x + size, y + size, border);
+        drawRect(x, y, x + 1, y + size, border);
+        drawRect(x + size - 1, y, x + size, y + size, border);
+
+        if (selected) {
+            drawRect(x + 1, y + 1, x + size - 1, y + size - 1, 0xFFFFFFFF);
+        } else if (radio) {
+            drawRect(x + 1, y + 1, x + size - 1, y + size - 1, 0x66333333);
+        }
+    }
+
+    private String getDiscoveryHeaderText() {
+        String label = I18n.format("gui.spellarchives.filter.discovery.label");
+        String option = I18n.format(getDiscoveryOptionKey(discoveryFilter));
+        return label + ": " + option;
+    }
+
+    private String getDiscoveryOptionKey(DiscoveryFilter filter) {
+        switch (filter) {
+            case DISCOVERED:
+                return "gui.spellarchives.filter.discovery.option.discovered";
+            case UNDISCOVERED:
+                return "gui.spellarchives.filter.discovery.option.undiscovered";
+            default:
+                return "gui.spellarchives.filter.discovery.option.all";
+        }
+    }
+
+    private String getModsHeaderText() {
+        String label = I18n.format("gui.spellarchives.filter.mods.label");
+        if (availableModOptions.isEmpty()) {
+            return label + ": " + I18n.format("gui.spellarchives.filter.mods.summary.none");
+        }
+
+        if (selectedModFilters.isEmpty()) {
+            return label + ": " + I18n.format("gui.spellarchives.filter.mods.summary.none");
+        }
+
+        if (!modFilterTouched || selectedModFilters.size() == availableModOptions.size()) {
+            return label + ": " + I18n.format("gui.spellarchives.filter.mods.summary.all", availableModOptions.size());
+        }
+
+        return label + ": " + I18n.format("gui.spellarchives.filter.mods.summary.some", selectedModFilters.size(), availableModOptions.size());
     }
 
     /**
@@ -617,7 +944,8 @@ public class GuiSpellArchive extends GuiContainer {
                 int rarityRGB = 0x777777;
 
                 if (!slice.isEmpty()) {
-                    Spell rep = tile.getSpellPublic(slice.get(0).stack);
+                    Spell rep = slice.get(0).spell;
+                    if (rep == null) rep = tile.getSpellPublic(slice.get(0).stack);
                     tierText = rep != null ? rep.getTier().getDisplayNameWithFormatting() : (I18n.format("gui.spellarchives.tier_fallback", gr.tier));
                     rarityRGB = slice.get(0).rarityColor;
                 } else {
@@ -645,7 +973,8 @@ public class GuiSpellArchive extends GuiContainer {
 
                 // Base spine color from element.getColour(), fallback to precomputed
                 int elemColor;
-                Spell repSpell = tile.getSpellPublic(b.stack);
+                Spell repSpell = b.spell;
+                if (repSpell == null) repSpell = tile.getSpellPublic(b.stack);
                 Element repElem = repSpell != null ? repSpell.getElement() : null;
                 if (repElem != null) {
                     Style st = repElem.getColour();
@@ -814,15 +1143,13 @@ public class GuiSpellArchive extends GuiContainer {
      */
     private SpellPresentation buildSpellPresentation(BookEntry b, int effectiveCount) {
         ItemStack toShow = b.stack;
-        Spell spell = tile.getSpellPublic(toShow);
+        Spell spell = b.spell != null ? b.spell : tile.getSpellPublic(toShow);
         if (spell == null) return null;
 
         WizardData data = WizardData.get(player);
-        boolean discovered = (data != null) && data.hasSpellBeenDiscovered(spell);
-
-        // Treat all spells as discovered if player is in creative mode or discovery mode is off
-        if (player != null && player.capabilities != null && player.capabilities.isCreativeMode) discovered = true;
-        if (!Wizardry.settings.discoveryMode) discovered = true;
+        boolean discovered = b.discovered || !Wizardry.settings.discoveryMode ||
+            (player != null && player.capabilities != null && player.capabilities.isCreativeMode) ||
+            (data != null && data.hasSpellBeenDiscovered(spell));
 
         String headerName;
         ResourceLocation spellIcon = null;
@@ -1079,6 +1406,8 @@ public class GuiSpellArchive extends GuiContainer {
      */
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
+        if (handleFilterClick(mouseX, mouseY, mouseButton)) return;
+
         super.mouseClicked(mouseX, mouseY, mouseButton);
 
         // Interactions on book rows (left: extract, right: discover)
@@ -1105,6 +1434,75 @@ public class GuiSpellArchive extends GuiContainer {
             int amount = shift ? hovered.stack.getMaxStackSize() : 1;
             NetworkHandler.CHANNEL.sendToServer(new MessageExtractBook(tile.getPos(), key, amount));
         }
+    }
+
+    private boolean handleFilterClick(int mouseX, int mouseY, int mouseButton) {
+        if (discoveryHeaderRect.contains(mouseX, mouseY)) return true; // dropdown opens via hover; click is consumed
+
+        if (discoveryDropdownOpen && discoveryContentRect.contains(mouseX, mouseY)) {
+            if (mouseButton == 0) {
+                int relY = mouseY - (discoveryContentRect.y + 2);
+                int index = relY / FILTER_OPTION_HEIGHT;
+                DiscoveryFilter[] options = DiscoveryFilter.values();
+                if (index >= 0 && index < options.length) {
+                    DiscoveryFilter choice = options[index];
+                    if (discoveryFilter != choice) {
+                        discoveryFilter = choice;
+                        onFiltersChanged();
+                    }
+                }
+
+                discoveryDropdownOpen = false;
+            }
+
+            return true;
+        }
+
+        if (modsHeaderRect.contains(mouseX, mouseY)) {
+            if (mouseButton == 0) {
+                long now = Minecraft.getSystemTime();
+                if (now - lastModsHeaderClickMs <= DOUBLE_CLICK_MS) {
+                    toggleAllModFilters();
+                    lastModsHeaderClickMs = 0L;
+                } else {
+                    lastModsHeaderClickMs = now;
+                }
+            }
+
+            return true;
+        }
+
+        if (modsDropdownOpen && modsContentRect.contains(mouseX, mouseY)) {
+            if (mouseButton == 0 && !availableModOptions.isEmpty()) {
+                int relY = mouseY - (modsContentRect.y + 2);
+                int index = relY / FILTER_OPTION_HEIGHT;
+                if (index >= 0 && index < availableModOptions.size()) {
+                    String modId = availableModOptions.get(index);
+                    if (selectedModFilters.contains(modId)) selectedModFilters.remove(modId);
+                    else selectedModFilters.add(modId);
+
+                    modFilterTouched = true;
+                    onFiltersChanged();
+                }
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    private void toggleAllModFilters() {
+        if (availableModOptions.isEmpty()) return;
+
+        if (selectedModFilters.size() == availableModOptions.size()) {
+            selectedModFilters.clear();
+        } else {
+            selectedModFilters.clear();
+            selectedModFilters.addAll(availableModOptions);
+        }
+
+        modFilterTouched = true;
+        onFiltersChanged();
     }
 
     /**

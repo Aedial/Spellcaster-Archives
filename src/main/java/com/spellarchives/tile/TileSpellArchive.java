@@ -643,6 +643,21 @@ public class TileSpellArchive extends TileEntity {
         return keyOf(stack);
     }
 
+    /**
+     * Exposes the known spell book mod ids so client GUIs can build filter lists without
+     * duplicating the index logic maintained by this tile.
+     *
+     * @return A new list containing all known spell book mod ids.
+     */
+    public List<String> getSpellModIdsPublic() {
+        buildSpellBookIndex();
+
+        List<String> mods = new ArrayList<>();
+        if (spellBookByMod != null) mods.addAll(spellBookByMod.keySet());
+
+        return mods;
+    }
+
     // ---- GUI helpers (Wizardry-aware with graceful fallbacks) ----
     // Local color palettes (fallback-safe across Wizardry versions)
     private static final int[] TIER_COLORS = new int[]{

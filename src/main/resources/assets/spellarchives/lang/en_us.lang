@@ -40,6 +40,15 @@ gui.spellarchives.inst.right_discover=Right-click: use a scroll to identify this
 gui.spellarchives.inst.right_discover_add=Right-click: add identification scrolls to identify
 gui.spellarchives.inst.right_discover_disabled=Right-click: identification disabled (see config)
 gui.spellarchives.inst.right_discover_known=
+gui.spellarchives.filter.discovery.label=Discovery
+gui.spellarchives.filter.discovery.option.all=Show all
+gui.spellarchives.filter.discovery.option.discovered=Discovered only
+gui.spellarchives.filter.discovery.option.undiscovered=Undiscovered only
+gui.spellarchives.filter.mods.label=Spell mods
+gui.spellarchives.filter.mods.summary.all=All mods (%d)
+gui.spellarchives.filter.mods.summary.none=None selected
+gui.spellarchives.filter.mods.summary.some=%d of %d mods
+gui.spellarchives.filter.mods.dropdown.empty=No spell mods available
 
 gui.spellarchives.scroll_slot.tooltip.empty=Right click on the block while holding an identification scroll to deposit. May also be piped in
 gui.spellarchives.scroll_slot.tooltip.count=%s identification scroll(s)
