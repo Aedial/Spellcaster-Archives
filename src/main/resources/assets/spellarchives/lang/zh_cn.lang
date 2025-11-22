@@ -269,6 +269,11 @@ config.spellarchives.gui.right_panel_radius=右侧面板圆角半径
 config.spellarchives.right_panel_radius_desc=右侧面板背景的圆角半径（像素）。
 config.spellarchives.gui.right_panel_radius.tooltip=右侧面板背景的圆角半径（像素）。
 
+config.spellarchives.easy_layout_enabled=简易布局
+config.spellarchives.gui.easy_layout_enabled=简易布局
+config.spellarchives.height_ratio_desc=自动将右侧面板宽度比例调整为合适观看的尺寸。
+config.spellarchives.gui.easy_layout_enabled.tooltip=自动将右侧面板宽度比例调整为合适观看的尺寸。
+
 config.spellarchives.grid_inner_padding=左侧面板内边距
 config.spellarchives.gui.grid_inner_padding=左侧面板内边距
 config.spellarchives.grid_inner_padding_desc=左侧面板边缘与内容网格之间的内边距（像素）。
