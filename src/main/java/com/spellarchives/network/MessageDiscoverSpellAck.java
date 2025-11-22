@@ -1,19 +1,22 @@
 package com.spellarchives.network;
 
 import io.netty.buffer.ByteBuf;
+import java.nio.charset.StandardCharsets;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
-
-import com.spellarchives.gui.GuiSpellArchive;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 import electroblob.wizardry.data.WizardData;
 import electroblob.wizardry.registry.WizardrySounds;
 import electroblob.wizardry.spell.Spell;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+
+import com.spellarchives.gui.GuiSpellArchive;
+
 
 /**
  * Server->client acknowledgement that a spell has been discovered. Ensures client-side
@@ -30,7 +33,7 @@ public class MessageDiscoverSpellAck implements IMessage {
 
     @Override
     public void toBytes(ByteBuf buf) {
-        byte[] bytes = spellName.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] bytes = spellName.getBytes(StandardCharsets.UTF_8);
         buf.writeInt(bytes.length);
         buf.writeBytes(bytes);
     }
@@ -40,7 +43,7 @@ public class MessageDiscoverSpellAck implements IMessage {
         int len = buf.readInt();
         byte[] bytes = new byte[len];
         buf.readBytes(bytes);
-        this.spellName = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+        this.spellName = new String(bytes, StandardCharsets.UTF_8);
     }
 
     public static class Handler implements IMessageHandler<MessageDiscoverSpellAck, IMessage> {

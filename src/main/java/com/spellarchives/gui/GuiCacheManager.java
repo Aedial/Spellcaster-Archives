@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.spellarchives.gui.GuiSpellArchive;
+import com.spellarchives.gui.SpellPresentation;
 
 /**
  * A small per-GUI cache manager for layout and presentation caches used by GuiSpellArchive.
@@ -19,7 +21,7 @@ public final class GuiCacheManager {
 
     // GUI instance helpers
     private GuiSpellArchive.BookEntry hoveredEntry = null;
-    private GuiSpellArchive.SpellPresentation cachedPresentationObj = null;
+    private SpellPresentation cachedPresentationObj = null;
     private String cachedPresentationKey = null;
     private GuiSpellArchive.GridGeometry cachedGG = null;
 
@@ -62,7 +64,7 @@ public final class GuiCacheManager {
         return this.hoveredEntry;
     }
 
-    public GuiSpellArchive.SpellPresentation getCachedPresentation(String key, int count) {
+    public SpellPresentation getCachedPresentation(String key, int count) {
         if (this.cachedPresentationObj == null) return null;
 
         // simple match by equality on previously cached key/counter encoded in headerName and count
@@ -72,7 +74,7 @@ public final class GuiCacheManager {
         return null;
     }
 
-    public void putCachedPresentation(String key, GuiSpellArchive.SpellPresentation p) {
+    public void putCachedPresentation(String key, SpellPresentation p) {
         this.cachedPresentationKey = key;
         this.cachedPresentationObj = p;
     }

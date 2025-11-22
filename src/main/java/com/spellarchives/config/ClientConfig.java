@@ -43,8 +43,6 @@ public final class ClientConfig extends BaseConfig {
     // -- Configurable Fields (initialized with defaults) --
 
     // Window sizing
-    public static int DEFAULT_GUI_WIDTH = 248;           // Base width if screen ratio calc is smaller
-    public static int DEFAULT_GUI_HEIGHT = 220;          // Base height if screen ratio calc is smaller
     public static float WIDTH_RATIO = 0.75f;             // Archives window width = 75% of screen width
     public static float HEIGHT_RATIO = 0.75f;            // Archives window height = 75% of screen height
     public static int MIN_WIDTH = 220;                   // Minimum archive window width
@@ -195,8 +193,6 @@ public final class ClientConfig extends BaseConfig {
         EASY_LAYOUT_ENABLED = defineBool("EASY_LAYOUT_ENABLED", EASY_LAYOUT_ENABLED, "config.spellarchives.easy_layout_enabled_desc");
         MIN_WIDTH = defineInt("MIN_WIDTH", MIN_WIDTH, 64, 2000, "config.spellarchives.min_width_desc");
         MIN_HEIGHT = defineInt("MIN_HEIGHT", MIN_HEIGHT, 48, 2000, "config.spellarchives.min_height_desc");
-        DEFAULT_GUI_WIDTH = defineInt("DEFAULT_GUI_WIDTH", DEFAULT_GUI_WIDTH, 100, 2000, "config.spellarchives.default_gui_width");
-        DEFAULT_GUI_HEIGHT = defineInt("DEFAULT_GUI_HEIGHT", DEFAULT_GUI_HEIGHT, 80, 2000, "config.spellarchives.default_gui_height");
 
         // Layout
         MARGIN = defineInt("MARGIN", MARGIN, 0, 200, "config.spellarchives.margin_desc");
