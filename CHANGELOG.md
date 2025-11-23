@@ -11,6 +11,7 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 ## [0.5.1] - 2025-11-21
 ### Fixed
 - Clean the filters' layout
+- Fix layouts for all screen ratios (mainly due to icon). Only works with "Easy layout" enabled.
 
 
 ## [0.5.0] - 2025-11-20

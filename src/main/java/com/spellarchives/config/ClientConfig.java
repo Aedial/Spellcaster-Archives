@@ -86,7 +86,7 @@ public final class ClientConfig extends BaseConfig {
     public static int RIGHT_PANEL_INNER_MARGIN = 10;     // Inner margin from right panel edges to content
     public static int RIGHT_PANEL_TEXT_SIDE_PAD = 10;    // Side padding used for description wrap width
     public static int RIGHT_TITLE_ICON_SIZE = 16;        // Size of the top-left icon in the right panel header
-    public static int RIGHT_TITLE_TEXT_GAP = 24;         // X gap from left content edge to header text start
+    public static int RIGHT_TITLE_TEXT_GAP = 20;         // X gap from left content edge to header text start
     public static int RIGHT_AFTER_HEADER_GAP = 22;       // Vertical gap after header row before next line
     public static int RIGHT_LINE_GAP_SMALL = 12;         // Vertical spacing between property lines
     public static int RIGHT_LINE_GAP_MEDIUM = 18;        // Vertical spacing for tier/element lines

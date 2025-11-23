@@ -56,9 +56,7 @@ public class LeftPanelRenderer {
             int grooveW = Math.min(gg.gridW, 1 + gridCols * (cellW + ClientConfig.SPINE_LEFT_BORDER));
             drawRowGroove(gg.gridX, baseY, grooveW, cellH);
 
-            if (gr.showHeader) {
-                renderTierHeader(gr, slice, gg, baseY);
-            }
+            if (gr.showHeader) renderTierHeader(gr, slice, gg, baseY);
 
             for (int i = 0; i < slice.size(); i++) {
                 BookEntry b = slice.get(i);

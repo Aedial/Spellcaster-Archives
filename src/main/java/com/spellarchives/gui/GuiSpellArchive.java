@@ -242,6 +242,15 @@ public class GuiSpellArchive extends GuiContainer {
     private int cachedEasyWidth = -1;
     private int cachedEasyWidthRev = -1;
 
+    // Icon layout fallback modes for right panel rendering when easy layout overflows
+    public enum IconLayoutMode {
+        FULL_WIDTH_BOTTOM, // original: square icon at bottom occupying full inner width
+        INLINE_STATS,      // fallback: icon placed to the right of the stats block, sized to stats height
+        HIDDEN             // final fallback: icon not shown at all
+    }
+
+    private IconLayoutMode iconLayoutMode = IconLayoutMode.FULL_WIDTH_BOTTOM;
+
     // (Spine and background dynamic textures are produced and cached by DynamicTextureFactory)
 
     private final GuiCacheManager cacheManager = new GuiCacheManager();
@@ -564,38 +573,38 @@ public class GuiSpellArchive extends GuiContainer {
         leftPanelH = totalH - margin * 2;
     }
 
+    public IconLayoutMode getIconLayoutMode() {
+        return iconLayoutMode;
+    }
+
     private int computeEasyLayoutWidth() {
         if (unfilteredEntries.isEmpty()) return ClientConfig.RIGHT_PANEL_MIN_WIDTH;
 
-        // Try to derive minW from fitting title, between Right_PANEL_MIN_WIDTH and 50% of total width
-        int title_gap = ClientConfig.RIGHT_TITLE_TEXT_GAP;
-        int right_text_pad = ClientConfig.RIGHT_PANEL_TEXT_SIDE_PAD;
-
-        // Get the longest spell name (capped at 50% width)
+        // Determine minimum width based on longest header label (count prefix + name)
+        int titleGap = ClientConfig.RIGHT_TITLE_TEXT_GAP;
+        int rightTextPad = ClientConfig.RIGHT_PANEL_TEXT_SIDE_PAD;
         int minW = ClientConfig.RIGHT_PANEL_MIN_WIDTH;
         for (BookEntry entry : unfilteredEntries) {
             Spell spell = tile.getSpellPublic(entry.stack);
             if (spell == null) continue;
 
-            String name = "66.6x " + spell.getDisplayNameWithFormatting();
-            int nameW = title_gap + fontRenderer.getStringWidth(name) + right_text_pad * 2;
-            if (nameW > minW) minW = nameW;
+            String headerCandidate = "66.6x " + spell.getDisplayNameWithFormatting();
+            int needed = titleGap + fontRenderer.getStringWidth(headerCandidate) + rightTextPad * 2;
+            if (needed > minW) minW = needed;
         }
 
-        minW = Math.min(minW, (int)(this.xSize * 0.5f - 2 * right_text_pad));
+        // Cap initial min width at 50% for header-based sizing
+        minW = Math.min(minW, (int)(this.xSize * 0.5f - 2 * rightTextPad));
 
-        // Allow up to 65% width, trying to find best fit within that range (10 steps between min and max)
-        int maxW = (int)(this.xSize * 0.65f);
-        int step = minW < maxW - 10 ? (maxW - minW) / 10 : 1;
+        // First attempt: original layout (full-width square icon at bottom). Allow exploring up to 65% width.
+        int maxWOriginal = (int)(this.xSize * 0.65f);
+        int stepOriginal = minW < maxWOriginal - 10 ? (maxWOriginal - minW) / 10 : 1;
 
-        int bestW = minW;
-        int minOverflow = Integer.MAX_VALUE;
+        int bestWOriginal = minW;
+        int minIconOverflow = Integer.MAX_VALUE; // overflow caused specifically by icon height
 
         int margin = ClientConfig.MARGIN;
         int innerMargin = ClientConfig.RIGHT_PANEL_INNER_MARGIN;
-        // Available vertical space for content:
-        // Panel Height - Top Margin (start Y) - Bottom Clamp Margin
-        // rightPanelH is (ySize - margin * 2)
         int panelH = ySize - margin * 2;
         int availableSpace = panelH - margin - ClientConfig.RIGHT_BOTTOM_CLAMP_MARGIN;
 
@@ -603,13 +612,13 @@ public class GuiSpellArchive extends GuiContainer {
         int statsH = ClientConfig.RIGHT_LINE_GAP_MEDIUM + ClientConfig.RIGHT_LINE_GAP_SMALL * 3 + ClientConfig.RIGHT_SECTION_GAP;
         int fixedOverhead = headerH + statsH;
 
-        for (int w = minW; w <= maxW; w += step) {
+        for (int w = minW; w <= maxWOriginal; w += stepOriginal) {
             int contentW = w - innerMargin * 2;
             int textW = w - ClientConfig.RIGHT_PANEL_TEXT_SIDE_PAD * 2;
             if (contentW <= 0 || textW <= 0) continue;
 
-            int maxSpellOverflow = 0;
-
+            int worstIconOverflowForWidth = 0; // overflow attributable to icon (desc may still overflow; we ignore for fallback decision)
+            int worstTotalOverflow = 0; // used only to pick a width when no layout fits cleanly
             for (BookEntry entry : unfilteredEntries) {
                 Spell spell = tile.getSpellPublic(entry.stack);
                 if (spell == null) continue;
@@ -617,27 +626,146 @@ public class GuiSpellArchive extends GuiContainer {
                 String desc = spell.getDescription();
                 if (desc == null) desc = "";
 
-                // Calculate description height
                 List<String> lines = TextUtils.wrapTextToWidth(fontRenderer, desc, textW);
                 int descH = lines.size() * ClientConfig.RIGHT_DESC_LINE_HEIGHT;
-
-                // Icon height (full width)
-                int iconH = contentW;
-
-                int totalH = fixedOverhead + descH + iconH;
-                int overflow = totalH - availableSpace;
-                if (overflow > maxSpellOverflow) maxSpellOverflow = overflow;
+                int iconH = contentW; // square bottom icon height
+                int totalHFull = fixedOverhead + descH + iconH;
+                int overflowFull = totalHFull - availableSpace;
+                int overflowWithoutIcon = fixedOverhead + descH - availableSpace;
+                int iconContribution = Math.max(0, overflowFull - Math.max(0, overflowWithoutIcon));
+                if (iconContribution > worstIconOverflowForWidth) worstIconOverflowForWidth = iconContribution;
+                if (overflowFull > worstTotalOverflow) worstTotalOverflow = overflowFull;
+            }
+            if (worstTotalOverflow <= 0) { // everything fits including icon
+                iconLayoutMode = IconLayoutMode.FULL_WIDTH_BOTTOM;
+                return w;
             }
 
-            if (maxSpellOverflow <= 0) return w;  // Found a width that fits everything
-
-            if (maxSpellOverflow < minOverflow) {
-                minOverflow = maxSpellOverflow;
-                bestW = w;
+            if (worstIconOverflowForWidth < minIconOverflow) {
+                minIconOverflow = worstIconOverflowForWidth;
+                bestWOriginal = w;
             }
         }
 
-        return bestW;
+        // If icon overflow could be eliminated by widening further (within 65%) but description still overflows, we still treat as success for bottom mode
+        if (minIconOverflow == 0) {
+            iconLayoutMode = IconLayoutMode.FULL_WIDTH_BOTTOM;
+            return bestWOriginal;
+        }
+
+        // Second attempt: inline stats icon. We ONLY test horizontal fit up to 50% width.
+        int maxWInline = (int)(this.xSize * 0.5f);
+        int stepInline = minW < maxWInline - 10 ? (maxWInline - minW) / 8 : 1;
+        int statsTextHeight = ClientConfig.RIGHT_LINE_GAP_MEDIUM + ClientConfig.RIGHT_LINE_GAP_SMALL * 3; // height of stats block (element line + 3 property lines)
+        int inlineIconMargin = 4;
+
+        // Measure worst-case stats line width to detect overlap with inline icon.
+        int statsMaxWidth = 0;
+        for (BookEntry entry : unfilteredEntries) {
+            Spell spell = tile.getSpellPublic(entry.stack);
+            if (spell == null) continue;
+
+            // Element line width includes icon space to the left.
+            String elementName = spell.getElement().getFormattingCode() + spell.getElement().getDisplayName();
+            int elementLineW = ClientConfig.RIGHT_ELEMENT_ICON_SIZE + 4 + fontRenderer.getStringWidth(elementName);
+            if (elementLineW > statsMaxWidth) statsMaxWidth = elementLineW;
+
+            // Property lines (only consider discovered since inline icon shown only then)
+            if (entry.discovered) {
+                String costStr = I18n.format("gui.spellarchives.cost_fmt", spell.getCost(), spell.isContinuous ? "/" + I18n.format("timeunit.s") : "");
+                String cooldownStr = I18n.format("gui.spellarchives.cooldown_fmt", TextUtils.formatTimeTicks(spell.getCooldown()));
+                String chargeStr = I18n.format("gui.spellarchives.charge_fmt", TextUtils.formatTimeTicks(spell.getChargeup()));
+                int c1 = fontRenderer.getStringWidth(costStr);
+                int c2 = fontRenderer.getStringWidth(cooldownStr);
+                int c3 = fontRenderer.getStringWidth(chargeStr);
+                int widest = Math.max(c1, Math.max(c2, c3));
+                if (widest > statsMaxWidth) statsMaxWidth = widest;
+            }
+        }
+
+        // Fallback if no stats measured.
+        if (statsMaxWidth == 0) statsMaxWidth = 50;
+
+        int bestInlineWidth = -1;
+        int bestInlineOverflow = Integer.MAX_VALUE; // description overflow magnitude for best inline candidate
+
+        for (int w = minW; w <= maxWInline; w += stepInline) {
+            int contentW = w - innerMargin * 2;
+            int textW = w - ClientConfig.RIGHT_PANEL_TEXT_SIDE_PAD * 2;
+            if (contentW <= 0 || textW <= 0) continue;
+
+            int iconSize = Math.max(8, statsTextHeight - inlineIconMargin);
+            int availableStatsTextWidth = contentW - iconSize - inlineIconMargin;
+            boolean horizontalFit = availableStatsTextWidth >= statsMaxWidth;
+            if (!horizontalFit) continue; // stats would overlap icon; try larger width
+
+            // Compute worst-case description overflow at this width (ignoring icon vertical contribution)
+            int worstDescOverflow = 0;
+            for (BookEntry entry : unfilteredEntries) {
+                Spell spell = tile.getSpellPublic(entry.stack);
+                if (spell == null) continue;
+
+                String desc = spell.getDescription();
+                if (desc == null) desc = "";
+
+                List<String> lines = TextUtils.wrapTextToWidth(fontRenderer, desc, textW);
+                int descH = lines.size() * ClientConfig.RIGHT_DESC_LINE_HEIGHT;
+                int totalHInline = fixedOverhead + descH; // inline icon doesn't add height
+                int overflow = totalHInline - availableSpace;
+                if (overflow > worstDescOverflow) worstDescOverflow = overflow;
+            }
+
+            if (worstDescOverflow <= 0) { // fits fully
+                iconLayoutMode = IconLayoutMode.INLINE_STATS;
+                return w; // choose smallest width that fits description & avoids overlap
+            }
+
+            // Track best candidate (minimum overflow) to use if full fit not possible
+            if (worstDescOverflow < bestInlineOverflow) {
+                bestInlineOverflow = worstDescOverflow;
+                bestInlineWidth = w;
+            }
+        }
+
+        if (bestInlineWidth != -1) { // no full fit, but horizontally safe; widen to best width found
+            iconLayoutMode = IconLayoutMode.INLINE_STATS;
+            return bestInlineWidth;
+        }
+
+        // Final fallback: hide icon; choose width optimizing description (ignoring icon)
+        int bestWHidden = minW;
+        int minOverflowHidden = Integer.MAX_VALUE;
+        for (int w = minW; w <= maxWInline; w += stepInline) {
+            int textW = w - ClientConfig.RIGHT_PANEL_TEXT_SIDE_PAD * 2;
+            if (textW <= 0) continue;
+
+            int worstOverflow = 0;
+            for (BookEntry entry : unfilteredEntries) {
+                Spell spell = tile.getSpellPublic(entry.stack);
+                if (spell == null) continue;
+
+                String desc = spell.getDescription();
+                if (desc == null) desc = "";
+
+                List<String> lines = TextUtils.wrapTextToWidth(fontRenderer, desc, textW);
+                int descH = lines.size() * ClientConfig.RIGHT_DESC_LINE_HEIGHT;
+                int overflow = fixedOverhead + descH - availableSpace;
+                if (overflow > worstOverflow) worstOverflow = overflow;
+            }
+
+            if (worstOverflow < minOverflowHidden) {
+                minOverflowHidden = worstOverflow;
+                bestWHidden = w;
+            }
+
+            if (worstOverflow <= 0) {
+                bestWHidden = w;
+                break;
+            }
+        }
+
+        iconLayoutMode = IconLayoutMode.HIDDEN;
+        return bestWHidden;
     }
 
 

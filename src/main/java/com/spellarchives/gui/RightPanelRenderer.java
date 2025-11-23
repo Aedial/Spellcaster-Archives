@@ -71,8 +71,29 @@ public class RightPanelRenderer {
         drawHeader(p, x, y, color, rightPanelX, rightPanelW);
 
         int rowY = y + ClientConfig.RIGHT_AFTER_HEADER_GAP;
+        int statsStartY = rowY; // start of stats block for inline icon sizing
         rowY = drawElementLine(p, x, rowY, color);
         rowY = drawPropertiesLines(p, x, rowY);
+        int statsEndY = rowY; // end of stats block
+
+        // Inline stats icon fallback drawing (icon sits to the right of stats block)
+        if (p.discovered && p.spellIcon != null && gui.getIconLayoutMode() == GuiSpellArchive.IconLayoutMode.INLINE_STATS) {
+            int iconMargin = 4;
+            int statsBlockH = Math.max(0, statsEndY - statsStartY);
+            int iconH = Math.max(8, statsBlockH - iconMargin); // square icon sized to stats block height
+            int iconW = iconH;
+            int innerRight = rightPanelX + rightPanelW - ClientConfig.RIGHT_PANEL_INNER_MARGIN;
+            int iconX = innerRight - iconW;
+            int iconY = statsStartY;
+            mc.getTextureManager().bindTexture(p.spellIcon);
+            GlStateManager.color(1f, 1f, 1f, 1f);
+            Gui.drawScaledCustomSizeModalRect(iconX, iconY, 0, 0, 16, 16, iconW, iconH, 16, 16);
+
+            // Ensure description starts below the icon if icon extends past statsEndY
+            int iconBottom = iconY + iconH;
+            if (iconBottom > statsEndY) rowY = iconBottom;
+        }
+
         rowY += ClientConfig.RIGHT_SECTION_GAP;
 
         drawDescriptionAndIcon(p, x, rowY, color, rightPanelX, rightPanelY, rightPanelW, rightPanelH);
@@ -171,7 +192,8 @@ public class RightPanelRenderer {
         String desc = p.description != null ? p.description : "";
         int maxW = rightPanelW - ClientConfig.RIGHT_PANEL_TEXT_SIDE_PAD * 2;
         int safeMaxW = Math.max(0, maxW);
-        boolean showIcon = p.discovered && p.spellIcon != null;
+        GuiSpellArchive.IconLayoutMode mode = gui.getIconLayoutMode();
+        boolean showIcon = p.discovered && p.spellIcon != null && mode == GuiSpellArchive.IconLayoutMode.FULL_WIDTH_BOTTOM;
         int contentWidth = rightPanelW - ClientConfig.RIGHT_PANEL_INNER_MARGIN * 2;
         int iconW = showIcon ? contentWidth : 0;
         int iconH = iconW;
@@ -218,7 +240,7 @@ public class RightPanelRenderer {
         instructionWidget.setColor(instColor);
         instructionWidget.setAlignBottom(true);
 
-        int iconTopY = rightPanelY + rightPanelH - ClientConfig.RIGHT_BOTTOM_CLAMP_MARGIN - iconH - (showIcon ? 4 : 0);
+    int iconTopY = rightPanelY + rightPanelH - ClientConfig.RIGHT_BOTTOM_CLAMP_MARGIN - iconH - (showIcon ? 4 : 0);
         int minAllowed = rowY + ClientConfig.RIGHT_SECTION_GAP / 2;
         int availableHeight = iconTopY - minAllowed;
 
