@@ -1,5 +1,6 @@
 package com.spellarchives.gui;
 
+import java.awt.print.Book;
 import java.util.ArrayList;
 import java.util.List;
 import org.lwjgl.opengl.GL11;
@@ -45,7 +46,7 @@ public class LeftPanelRenderer {
         this.fontRenderer = mc.fontRenderer;
     }
 
-    public BookEntry renderPage(DisplayRows dr, PageInfo pi, GridGeometry gg, int mouseX, int mouseY, int cellW, int cellH, int gridCols) {
+    public BookEntry renderPage(DisplayRows dr, PageInfo pi, GridGeometry gg, int mouseX, int mouseY, int cellW, int cellH, int gridCols, BookEntry previewEntry) {
         BookEntry hoveredEntry = null;
 
         for (GrooveRow gr : pi.layout) {
@@ -65,8 +66,15 @@ public class LeftPanelRenderer {
 
                 renderBookSpine(b, x, y, cellW, cellH);
 
+                BookEntry entry = null;
                 if (mouseX >= x && mouseX < x + cellW + ClientConfig.SPINE_LEFT_BORDER && mouseY >= y && mouseY < y + cellH) {
+                    entry = b;
                     hoveredEntry = b;
+                } else if (previewEntry != null && previewEntry == b) {
+                    entry = b;
+                }
+
+                if (entry != null) {
                     int hoverBorder = ClientConfig.HOVER_BORDER;
                     Gui.drawRect(x, y, x + cellW + 1 + ClientConfig.SPINE_LEFT_BORDER, y + 1, hoverBorder);
                     Gui.drawRect(x, y + cellH - 1, x + cellW + 1 + ClientConfig.SPINE_LEFT_BORDER, y + cellH, hoverBorder);
@@ -255,5 +263,28 @@ public class LeftPanelRenderer {
 
     public boolean isMouseInScrollSlot(int mouseX, int mouseY) {
         return mouseX >= scrollSlotX && mouseX < scrollSlotX + scrollSlotW && mouseY >= scrollSlotY && mouseY < scrollSlotY + scrollSlotH;
+    }
+
+    /**
+     * Draws the page indicator centered between prev/next buttons, positioned just above the bottom bar.
+     */
+    public void drawPageIndicator(int leftPanelX, int leftPanelY, int leftPanelW, int leftPanelH, int page, int totalPages) {
+        int arrowsY = leftPanelY + leftPanelH - ClientConfig.BOTTOM_BAR_HEIGHT / 2 - ClientConfig.ARROWS_Y_OFFSET;
+        int prevX = leftPanelX + ClientConfig.GRID_INNER_PADDING;
+        int nextX = leftPanelX + leftPanelW - ClientConfig.GRID_INNER_PADDING - ClientConfig.NAV_BUTTON_SIZE;
+
+        // Position above the arrows bar (2px gap)
+        int indicatorY = arrowsY - fontRenderer.FONT_HEIGHT - 2;
+        if (indicatorY < leftPanelY) indicatorY = leftPanelY; // clamp
+
+        int displayTotal = Math.max(1, totalPages);
+
+        String pageStr = (page + 1) + "/" + displayTotal;
+        int pageW = fontRenderer.getStringWidth(pageStr);
+        int midRegionLeft = prevX + ClientConfig.NAV_BUTTON_SIZE;
+        int midRegionRight = nextX;
+        int midCenter = midRegionLeft + (midRegionRight - midRegionLeft) / 2;
+        int pageX = midCenter - pageW / 2;
+        fontRenderer.drawString(pageStr, pageX, indicatorY, 0xFFFFFF);
     }
 }

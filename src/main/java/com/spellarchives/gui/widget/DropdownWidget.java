@@ -118,20 +118,19 @@ public class DropdownWidget<T> extends BaseWidget {
         int optionHeight = getOptionHeight();
         int contentHeight = options.size() * optionHeight;
         int contentY = y + headerHeight;
-
-        drawRoundedPanel(x, contentY, width, contentHeight + 2, panelRadius, panelFill, panelBorder);
+        drawRoundedPanel(x, contentY, width, contentHeight, panelRadius, panelFill, panelBorder);
 
         for (int i = 0; i < options.size(); i++) {
             T opt = options.get(i);
-            int rowY = contentY + i * optionHeight + 1;  // Adjust for outer border
+            int rowY = contentY + i * optionHeight;
             boolean hover = mouseX >= x && mouseX < x + width && mouseY >= rowY && mouseY < rowY + optionHeight;
 
             int fill = hover ? optionHoverFill : optionFill;
-            drawRect(x + 1, rowY, x + width - 1, rowY + optionHeight, fill);
+            drawRect(x + 1, rowY + 1, x + width - 1, rowY + optionHeight - 1, fill); // 1 for top/bottom border
 
             boolean selected = multiSelect ? selectedOptions.contains(opt) : (selectedOption == opt);
             int indicatorX = x + (optionHorizontalOffset - indicatorSize) / 2;
-            int indicatorY = rowY + (optionHeight - indicatorSize) / 2 + 1;
+            int indicatorY = rowY + (optionHeight - indicatorSize) / 2;
             drawIndicator(indicatorX, indicatorY, !multiSelect, selected);
 
             String optLabel = optionProvider.apply(opt);
@@ -140,7 +139,7 @@ public class DropdownWidget<T> extends BaseWidget {
 
             GL11.glPushMatrix();
             if (optionScale != 1.0f) GL11.glScalef(optionScale, optionScale, 1f);
-            fontRenderer.drawString(trimmed, (x + optionHorizontalOffset) / optionScale, (rowY + optionVerticalPadding) / optionScale, textColor, false);
+            fontRenderer.drawString(trimmed, (x + optionHorizontalOffset) / optionScale, (rowY + optionVerticalPadding + 1) / optionScale, textColor, false);
             GL11.glPopMatrix();
         }
     }

@@ -9,6 +9,7 @@ import java.util.Set;
 import com.spellarchives.gui.GuiSpellArchive;
 import com.spellarchives.gui.SpellPresentation;
 
+
 /**
  * A small per-GUI cache manager for layout and presentation caches used by GuiSpellArchive.
  * It keeps simple cached values and invalidates them when the GuiStyle.CONFIG_REVISION changes
@@ -143,32 +144,31 @@ public final class GuiCacheManager {
             int totalRows = dr.rows.size();
             int currentRow = 0;
 
+            final int shadowExtra = 2;
             while (currentRow < totalRows) {
                 List<GuiSpellArchive.GrooveRow> pageLayout = new ArrayList<>();
-                int curY = gridY + headerH;
+                int yCursor = gridY; // top of region for next row/header
                 int gridBottom = gridY + gridH;
                 Set<Integer> pageSeenTiers = new HashSet<>();
 
                 while (currentRow < totalRows) {
                     int tier = dr.rowTiers.get(currentRow);
                     boolean showHeader = !pageSeenTiers.contains(tier);
+                    int headerAdd = showHeader ? (headerH - 1) : 0; // effective additional space before groove
+                    int grooveTop = yCursor + headerAdd;
+                    int grooveBottom = grooveTop + cellH; // exclude shadow from fit test
+                    if (grooveBottom > gridBottom) break; // row doesn't fit visually
 
-                    if (curY + cellH > gridBottom) break;
-
-                    pageLayout.add(new GuiSpellArchive.GrooveRow(currentRow, tier, curY, showHeader));
+                    pageLayout.add(new GuiSpellArchive.GrooveRow(currentRow, tier, grooveTop, showHeader));
                     pageSeenTiers.add(tier);
-
-                    if (currentRow + 1 < totalRows) {
-                        int nextTier = dr.rowTiers.get(currentRow + 1);
-                        boolean nextIsFirstOfTier = !pageSeenTiers.contains(nextTier);
-                        curY += cellH + (nextIsFirstOfTier ? headerH + rowGap : 1);
-                    }
-
                     currentRow++;
+
+                    // Advance cursor by full visual row height (header + groove) plus shadow + gap
+                    int consumed = headerAdd + cellH + shadowExtra;
+                    yCursor += consumed + rowGap;
                 }
 
-                // Safety break to avoid infinite loop if a single row doesn't fit
-                if (pageLayout.isEmpty() && currentRow < totalRows) break;
+                if (pageLayout.isEmpty()) break;
 
                 boolean hasNext = currentRow < totalRows;
                 this.allCachedPages.add(new GuiSpellArchive.PageInfo(pageLayout, hasNext));
@@ -183,4 +183,10 @@ public final class GuiCacheManager {
 
         return new GuiSpellArchive.PageInfo(new ArrayList<>(), false);
     }
+
+    public int getTotalPages() {
+        return this.allCachedPages != null ? this.allCachedPages.size() : 0;
+    }
+
+    public List<GuiSpellArchive.PageInfo> getAllCachedPages() { return this.allCachedPages; }
 }

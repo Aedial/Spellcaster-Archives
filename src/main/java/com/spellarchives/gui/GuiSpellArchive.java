@@ -1,6 +1,5 @@
 package com.spellarchives.gui;
 
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,30 +12,23 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.IntFunction;
-import java.util.function.IntUnaryOperator;
+
 import java.util.stream.Collectors;
-import javax.imageio.ImageIO;
-import org.lwjgl.opengl.GL11;
+
+import org.lwjgl.input.Keyboard;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.renderer.texture.DynamicTexture;
+
 import net.minecraft.client.resources.I18n;
-import net.minecraft.client.resources.IResource;
-import net.minecraft.client.resources.IResourceManager;
-import net.minecraft.client.util.ITooltipFlag;
+
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.text.Style;
 import net.minecraft.util.text.TextFormatting;
-import net.minecraft.world.World;
 
 import com.spellarchives.container.ContainerSpellArchive;
 import com.spellarchives.config.ClientConfig;
@@ -45,27 +37,21 @@ import com.spellarchives.network.NetworkHandler;
 import com.spellarchives.network.MessageDepositScrolls;
 import com.spellarchives.network.MessageExtractScrolls;
 import com.spellarchives.network.MessageDiscoverSpell;
-import com.spellarchives.SpellArchives;
 import com.spellarchives.config.SpellArchivesConfig;
 import com.spellarchives.client.DynamicTextureFactory;
 import com.spellarchives.util.TextUtils;
 import com.spellarchives.tile.TileSpellArchive;
 
 import electroblob.wizardry.Wizardry;
-import electroblob.wizardry.client.ClientProxy;
-import electroblob.wizardry.client.MixedFontRenderer;
-import electroblob.wizardry.constants.Element;
-import electroblob.wizardry.data.SpellGlyphData;
+
 import electroblob.wizardry.data.WizardData;
 import electroblob.wizardry.spell.Spell;
 
-import com.spellarchives.gui.widget.DropdownWidget;
+import com.spellarchives.gui.GuiUtils;
 import com.spellarchives.gui.LeftPanelRenderer;
 import com.spellarchives.gui.RightPanelRenderer;
-import com.spellarchives.gui.SpellPresentation;
-import com.spellarchives.gui.GuiUtils;
 import com.spellarchives.gui.widget.DropdownWidget;
-import com.spellarchives.gui.widget.InstructionWidget;
+import com.spellarchives.gui.widget.SearchFilterWidget;
 
 
 public class GuiSpellArchive extends GuiContainer {
@@ -81,9 +67,12 @@ public class GuiSpellArchive extends GuiContainer {
     private RightPanelRenderer rightPanelRenderer;
     private DropdownWidget<DiscoveryFilter> discoveryDropdown;
     private DropdownWidget<String> modsDropdown;
+    private SearchFilterWidget searchWidget;
 
     // Current page index (0-based)
     private int page = 0;
+    // Preview highlight target from search hover (not selected, only visual highlight)
+    private BookEntry previewSearchEntry = null;
 
     // Scale of the filter dropdowns
     private static final float FILTER_HEADER_SCALE = 1.0f;
@@ -100,33 +89,6 @@ public class GuiSpellArchive extends GuiContainer {
         ALL,
         DISCOVERED,
         UNDISCOVERED
-    }
-
-    private static class Rect {
-        int x;
-        int y;
-        int w;
-        int h;
-
-        Rect set(int x, int y, int w, int h) {
-            this.x = x;
-            this.y = y;
-            this.w = Math.max(0, w);
-            this.h = Math.max(0, h);
-
-            return this;
-        }
-
-        void clear() {
-            this.x = 0;
-            this.y = 0;
-            this.w = 0;
-            this.h = 0;
-        }
-
-        boolean contains(int px, int py) {
-            return px >= x && px < x + w && py >= y && py < y + h;
-        }
     }
 
     private GuiButton prevButton;
@@ -153,6 +115,12 @@ public class GuiSpellArchive extends GuiContainer {
     private boolean modFilterTouched = false;
 
     private DiscoveryFilter discoveryFilter = DiscoveryFilter.ALL;
+
+    // Name search filter (right panel). Lowercased trimmed text. When non-empty, only discovered spells whose
+    // localized display name contains the substring are included.
+    private String nameFilter = "";
+    // Cached suggestions of discovered localized names (deduped & sorted) for current filters.
+    private List<String> cachedNameSuggestions = new ArrayList<>();
 
     // Helper value objects for layout computations
     public static class GridGeometry {
@@ -266,6 +234,18 @@ public class GuiSpellArchive extends GuiContainer {
 
     @Override
     public void initGui() {
+        // Enable key repeat so holding a key (e.g. backspace or character keys) continuously triggers keyTyped.
+        Keyboard.enableRepeatEvents(true);
+        // Preserve prior search state across re-init (window resize etc.)
+        String priorSearchText = null;
+
+        int priorCaret = 0;
+        boolean priorFocused = false;
+        if (searchWidget != null) {
+            priorSearchText = searchWidget.getText();
+            priorFocused = searchWidget.isFocused();
+        }
+
         // Dynamic sizing
         this.xSize = Math.max(ClientConfig.MIN_WIDTH, (int) (this.width * ClientConfig.WIDTH_RATIO));
         this.ySize = Math.max(ClientConfig.MIN_HEIGHT, (int) (this.height * ClientConfig.HEIGHT_RATIO));
@@ -274,6 +254,11 @@ public class GuiSpellArchive extends GuiContainer {
 
         leftPanelRenderer = new LeftPanelRenderer(this);
         rightPanelRenderer = new RightPanelRenderer(this);
+        searchWidget = new SearchFilterWidget(mc, fontRenderer);
+        searchWidget.setOnChange(value -> onNameFilterChanged(value));
+        searchWidget.setOnHover(value -> onSuggestionHover(value));
+        searchWidget.setSuggestions(getNameSuggestions());
+        if (priorSearchText != null && !priorSearchText.isEmpty()) searchWidget.setText(priorSearchText);
 
         discoveryDropdown = new DropdownWidget<>(mc, fontRenderer, I18n.format(getDiscoveryOptionKey(discoveryFilter)));
         discoveryDropdown.setHeaderScale(FILTER_HEADER_SCALE);
@@ -310,6 +295,8 @@ public class GuiSpellArchive extends GuiContainer {
         this.buttonList.add(nextButton);
 
         rebuildEntries();
+        // Re-sync suggestions after initial build
+        searchWidget.setSuggestions(getNameSuggestions());
     }
 
     /**
@@ -322,6 +309,7 @@ public class GuiSpellArchive extends GuiContainer {
         tierOrder.clear();
         cachedEasyWidth = -1;
         filteredSnapshot.clear();
+        cachedNameSuggestions.clear();
 
         refreshKnownModOptions();
 
@@ -343,10 +331,23 @@ public class GuiSpellArchive extends GuiContainer {
 
             unfilteredEntries.add(entry);
 
-            if (!passesDiscoveryFilter(entry) || !passesModFilter(entry)) continue;
+            if (!passesDiscoveryFilter(entry) || !passesModFilter(entry) || !passesNameFilter(entry)) continue;
 
             entries.add(entry);
             filteredSnapshot.put(e.getKey(), e.getValue());
+
+            // Build suggestions list from discovered spells.
+            if (entry.discovered) {
+                String rawName = spell != null ? spell.getDisplayNameWithFormatting() : null;
+                if (rawName != null && !rawName.isEmpty()) {
+                    String plain = TextFormatting.getTextWithoutFormattingCodes(rawName);
+                    if (plain != null && !plain.isEmpty()) cachedNameSuggestions.add(plain);
+                }
+            }
+        }
+
+        if (!cachedNameSuggestions.isEmpty()) {
+            cachedNameSuggestions = cachedNameSuggestions.stream().distinct().sorted(String.CASE_INSENSITIVE_ORDER).collect(Collectors.toList());
         }
 
         // Group by tier (rarity). Keep a stable order: tier ascending (Novice->Master)
@@ -395,6 +396,32 @@ public class GuiSpellArchive extends GuiContainer {
         return selectedModFilters.contains(entry.modId);
     }
 
+    private boolean passesNameFilter(BookEntry entry) {
+        if (nameFilter == null || nameFilter.isEmpty()) return true;
+        if (!entry.discovered) return false; // never match undiscovered to avoid leaking names
+
+        Spell spell = entry.spell != null ? entry.spell : tile.getSpellPublic(entry.stack);
+        if (spell == null) return false;
+
+        String plain = TextFormatting.getTextWithoutFormattingCodes(spell.getDisplayNameWithFormatting());
+        if (plain == null) return false;
+
+        return plain.toLowerCase(Locale.ROOT).contains(nameFilter);
+    }
+
+    /**
+     * External hook from search widget when text changes.
+     */
+    public void onNameFilterChanged(String newFilter) {
+        String nf = newFilter == null ? "" : newFilter.trim().toLowerCase(Locale.ROOT);
+        if (nf.equals(nameFilter)) return;
+        nameFilter = nf;
+        onFiltersChanged();
+    }
+
+    public String getNameFilter() { return nameFilter; }
+    public List<String> getNameSuggestions() { return cachedNameSuggestions; }
+
     private boolean isSpellDiscoveredForFilters(Spell spell, WizardData data, boolean creative, boolean discoveryDisabled) {
         if (spell == null) return false;
         if (creative || discoveryDisabled) return true;
@@ -411,6 +438,9 @@ public class GuiSpellArchive extends GuiContainer {
         page = 0;
         cacheManager.clearAll();
         rebuildEntries();
+        if (searchWidget != null) searchWidget.setSuggestions(getNameSuggestions());
+
+        previewSearchEntry = null; // clear preview on filter changes
     }
 
     /**
@@ -418,25 +448,73 @@ public class GuiSpellArchive extends GuiContainer {
      * @return The maximum page index (0-based)
      */
     private int computeMaxPage() {
-        // Vertical pagination: compute total rows after wrapping and divide by rowsPerPage
-        List<List<BookEntry>> displayRows = new ArrayList<>();
-        int cols = Math.max(1, gridCols);
+        // Force pages to be (re)built using current geometry; rely on cache manager's accurate layout
+        DisplayRows dr = cacheManager.getOrBuildDisplayRows(getSnapshotKeys(), rowsByTier, gridCols);
 
-        for (int t = 0; t < tierOrder.size(); t++) {
-            int tier = tierOrder.get(t);
-            List<BookEntry> rowBooks = rowsByTier.get(tier);
-            if (rowBooks == null || rowBooks.isEmpty()) continue;
+        // Build page 0 (or current) to ensure pages present; header height from current grid geometry
+        GridGeometry gg = computeGridGeometry();
+        cacheManager.getOrBuildPageInfo(dr, gg.gridX, gg.gridY, gg.gridW, gg.gridH, gg.headerH, page, cellH, rowGap, gridRows);
+        int totalPages = cacheManager.getTotalPages();
 
-            for (int off = 0; off < rowBooks.size(); off += cols) {
-                int endIdx = Math.min(off + cols, rowBooks.size());
-                displayRows.add(rowBooks.subList(off, endIdx));
+        return Math.max(0, totalPages - 1);
+    }
+
+    // Exposed read-only accessors (needed for page indicator rendering)
+    public int getCurrentPage() { return page; }
+    public int getMaxPage() { return computeMaxPage(); }
+    public BookEntry getPreviewSearchEntry() { return previewSearchEntry; }
+    public int getCachedTotalPages() { return cacheManager.getTotalPages(); }
+
+    /**
+     * Handles hover over a name suggestion: find corresponding book entry, switch to its page, and
+     * mark it for visual highlight without selecting it or updating hovered entry.
+     * @param value Plain (unformatted) localized spell name or null.
+     */
+    private void onSuggestionHover(String value) {
+        if (value == null || value.isEmpty()) {
+            if (previewSearchEntry != null) {
+                previewSearchEntry = null;
+                // do not clear caches; only visual highlight removed
+            }
+
+            return;
+        }
+
+        // Ensure cached pages are built for current layout (we rely on PageInfo groove rows)
+        DisplayRows dr = cacheManager.getOrBuildDisplayRows(getSnapshotKeys(), rowsByTier, gridCols);
+        GridGeometry gg = computeGridGeometry();
+        cacheManager.getOrBuildPageInfo(dr, gg.gridX, gg.gridY, gg.gridW, gg.gridH, gg.headerH, page, cellH, rowGap, gridRows);
+
+        // Find matching entry among filtered entries
+        BookEntry match = null;
+        for (BookEntry be : entries) {
+            Spell spell = be.spell != null ? be.spell : tile.getSpellPublic(be.stack);
+            if (spell == null) continue;
+
+            String plain = TextFormatting.getTextWithoutFormattingCodes(spell.getDisplayNameWithFormatting());
+            if (plain != null && plain.equalsIgnoreCase(value)) { match = be; break; }
+        }
+
+        if (match == null) { previewSearchEntry = null; return; }
+
+        List<PageInfo> pages = cacheManager.getAllCachedPages();
+        if (pages == null) { previewSearchEntry = null; return; }
+
+        int targetPage = page;
+        outer: for (int p = 0; p < pages.size(); p++) {
+            PageInfo pi = pages.get(p);
+            for (GrooveRow gr : pi.layout) {
+                List<BookEntry> slice = dr.rows.get(gr.rowIndex);
+                if (slice.contains(match)) { targetPage = p; break outer; }
             }
         }
 
-        int totalRows = displayRows.size();
-        int rowsPerPage = Math.max(1, gridRows);
+        if (targetPage != page) {
+            page = targetPage;
+            cacheManager.clearCachedPresentation();
+        }
 
-        return Math.max(0, (totalRows - 1) / rowsPerPage);
+        previewSearchEntry = match;
     }
 
     public TileSpellArchive getTile() {
@@ -509,14 +587,15 @@ public class GuiSpellArchive extends GuiContainer {
 
         cacheManager.setCachedGG(gg);
 
-        // 3) Pagination widgets
+        // 3) Pagination widgets + page index indicator
         leftPanelRenderer.placePaginationButtons(prevButton, nextButton, leftPanelX, leftPanelY, leftPanelW, leftPanelH, page, pageInfo.hasNext);
+        leftPanelRenderer.drawPageIndicator(leftPanelX, leftPanelY, leftPanelW, leftPanelH, getCurrentPage(), cacheManager.getTotalPages());
 
         // 4) Identification scroll slot
         leftPanelRenderer.computeAndRenderScrollSlot(mouseX, mouseY, leftPanelX, leftPanelY, leftPanelW, leftPanelH);
 
         // 5) Render page and details
-        BookEntry hovered = leftPanelRenderer.renderPage(displayRows, pageInfo, gg, mouseX, mouseY, cellW, cellH, gridCols);
+        BookEntry hovered = leftPanelRenderer.renderPage(displayRows, pageInfo, gg, mouseX, mouseY, cellW, cellH, gridCols, getPreviewSearchEntry());
 
         // If hovered entry changed since last frame, clear cached presentation so the
         // right panel rebuilds immediately rather than reusing stale data.
@@ -534,6 +613,17 @@ public class GuiSpellArchive extends GuiContainer {
 
         cacheManager.setHoveredEntry(hovered);
         rightPanelRenderer.render(hovered, rightPanelX, rightPanelY, rightPanelW, rightPanelH);
+
+        // Update bounds for search widget (occupies inner area when nothing hovered)
+        if (hovered == null && searchWidget != null) {
+            int innerX = rightPanelX + ClientConfig.RIGHT_PANEL_INNER_MARGIN;
+            int innerY = rightPanelY + ClientConfig.RIGHT_PANEL_INNER_MARGIN;
+            int innerW = rightPanelW - ClientConfig.RIGHT_PANEL_INNER_MARGIN * 2;
+            int innerH = rightPanelH - ClientConfig.RIGHT_PANEL_INNER_MARGIN * 2;
+            searchWidget.setBounds(innerX, innerY, innerW, innerH);
+            searchWidget.setSuggestions(getNameSuggestions());
+            searchWidget.draw(mouseX, mouseY, partialTicks);
+        }
 
         discoveryDropdown.draw(mouseX, mouseY, partialTicks);
         modsDropdown.draw(mouseX, mouseY, partialTicks);
@@ -861,29 +951,6 @@ public class GuiSpellArchive extends GuiContainer {
     }
 
     /**
-     * Builds the display rows by wrapping the book entries into rows based on gridCols.
-     * @return The DisplayRows containing wrapped book entries and their tiers
-     */
-    private DisplayRows buildDisplayRows() {
-        List<List<BookEntry>> displayRows = new ArrayList<>();
-        List<Integer> displayRowTiers = new ArrayList<>();
-
-        for (int t = 0; t < tierOrder.size(); t++) {
-            int tier = tierOrder.get(t);
-            List<BookEntry> rowBooks = rowsByTier.get(tier);
-            if (rowBooks == null || rowBooks.isEmpty()) continue;
-
-            for (int off = 0; off < rowBooks.size(); off += gridCols) {
-                int endIdx = Math.min(off + gridCols, rowBooks.size());
-                displayRows.add(rowBooks.subList(off, endIdx));
-                displayRowTiers.add(tier);
-            }
-        }
-
-        return new DisplayRows(displayRows, displayRowTiers);
-    }
-
-    /**
      * Handles mouse click events for extracting books.
      * @param mouseX The x position of the mouse
      * @param mouseY The y position of the mouse
@@ -894,6 +961,7 @@ public class GuiSpellArchive extends GuiContainer {
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
         if (discoveryDropdown.mouseClicked(mouseX, mouseY, mouseButton)) return;
         if (modsDropdown.mouseClicked(mouseX, mouseY, mouseButton)) return;
+        if (searchWidget != null && searchWidget.mouseClicked(mouseX, mouseY, mouseButton)) return;
 
         super.mouseClicked(mouseX, mouseY, mouseButton);
 
@@ -992,5 +1060,31 @@ public class GuiSpellArchive extends GuiContainer {
         }
     }
 
+    @Override
+    protected void keyTyped(char typedChar, int keyCode) throws IOException {
+        if (searchWidget != null && searchWidget.isFocused()) {
+            searchWidget.keyTyped(typedChar, keyCode);
+            return;
+        }
 
+        super.keyTyped(typedChar, keyCode);
+    }
+
+    @Override
+    public void onGuiClosed() {
+        super.onGuiClosed();
+
+        // Disable repeat events to avoid affecting other GUIs.
+        Keyboard.enableRepeatEvents(false);
+    }
+
+    @Override
+    public void handleMouseInput() throws IOException {
+        super.handleMouseInput();
+
+        if (searchWidget != null) {
+            int delta = org.lwjgl.input.Mouse.getEventDWheel();
+            if (delta != 0) searchWidget.handleMouseWheel(delta);
+        }
+    }
 }
