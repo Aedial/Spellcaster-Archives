@@ -7,6 +7,12 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Keep a Changelog: https://keepachangelog.com/en/1.1.0/
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
+
+## [0.5.3] - 2025-12-01
+### Fixed
+- Fix brittle state with some pipes when trying to insert spell books that are not already present in the archive.
+
+
 ## [0.5.2] - 2025-11-24
 ### Added
 - Add page index and total pages indicator at the bottom of the left panel.

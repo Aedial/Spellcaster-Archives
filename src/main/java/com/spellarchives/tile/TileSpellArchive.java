@@ -123,7 +123,7 @@ public class TileSpellArchive extends TileEntity {
          */
         @Override
         public int getSlots() {
-            return Math.max(1, slotKeys.size());
+            return Math.max(1, slotKeys.size() + 1);
         }
 
         /**
@@ -135,6 +135,7 @@ public class TileSpellArchive extends TileEntity {
          */
         @Override
         public ItemStack getStackInSlot(int slot) {
+            // TODO: is it worth to move the "insertion" slot to 0 instead of the end?
             if (slot < 0 || slot >= slotKeys.size()) return ItemStack.EMPTY;
 
             String key = slotKeys.get(slot);

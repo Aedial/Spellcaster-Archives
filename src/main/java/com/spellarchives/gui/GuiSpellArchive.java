@@ -375,7 +375,6 @@ public class GuiSpellArchive extends GuiContainer {
             selectedModFilters.addAll(availableModOptions);
         } else {
             selectedModFilters.retainAll(availableModOptions);
-
         }
 
         this.modsDropdown.setLabel(getModTitle(new ArrayList<>(selectedModFilters)));
