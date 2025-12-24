@@ -84,8 +84,8 @@ public class TileSpellArchive extends TileEntity {
     private static Map<Integer, String> metadataToSpellName = null;
     private static Map<String, Integer> spellNameToMetadata = null;
 
-    // Cached index of modid -> spell book item for that mod (prefers items named "spell_book")
-    private static Map<String, Item> spellBookByMod = null;
+    // Cached list of all ItemSpellBook instances, built once at first use
+    private static List<Item> allSpellBooks = null;
     private static Item defaultSpellBook = null;
 
     /**
@@ -490,6 +490,8 @@ public class TileSpellArchive extends TileEntity {
 
     /**
      * Converts a spell registry name from NBT back to a runtime key (rl|meta).
+     * Uses {@link Spell#applicableForItem} to find the correct spell book item for spells
+     * that may have multiple applicable books (e.g., Ancient Spellcraft elemental books).
      * Returns null if the spell no longer exists.
      *
      * @param spellName The spell's registry name.
@@ -502,11 +504,18 @@ public class TileSpellArchive extends TileEntity {
         Integer meta = spellNameToMetadata.get(spellName);
         if (meta == null) return null;
 
-        String modid = "ebwizardry";
-        int i = spellName.indexOf(':');
-        if (i > 0) modid = spellName.substring(0, i);
+        Spell spell = Spell.byMetadata(meta);
+        if (spell == null) return null;
 
-        Item spellBook = spellBookByMod.get(modid);
+        // Find the correct spell book by checking applicableForItem on the spell
+        Item spellBook = null;
+        for (Item book : allSpellBooks) {
+            if (spell.applicableForItem(book)) {
+                spellBook = book;
+                break;
+            }
+        }
+
         if (spellBook == null) spellBook = defaultSpellBook;
         if (spellBook == null || spellBook.getRegistryName() == null) return null;
 
@@ -514,34 +523,24 @@ public class TileSpellArchive extends TileEntity {
     }
 
     /**
-     * Builds the cached index of modid -> ItemSpellBook for all registered items.
+     * Builds the cached list of all ItemSpellBook instances for use by {@link #spellNameToKey}.
      * Safe to call repeatedly; initialization happens once on first use.
      */
     private static void buildSpellBookIndex() {
-        if (spellBookByMod != null) return;
+        if (allSpellBooks != null) return;
 
-        Map<String, Item> map = new HashMap<>();
+        List<Item> books = new ArrayList<>();
 
         for (ResourceLocation rl : Item.REGISTRY.getKeys()) {
             Item item = Item.REGISTRY.getObject(rl);
-            if (!(item instanceof ItemSpellBook)) continue;
-
-            String modid = getNamespaceSafe(rl);
-            Item existing = map.get(modid);
-
-            // Prefer items whose path explicitly contains "spell_book"
-            if (existing == null || getPathSafe(rl).contains("spell_book")) {
-                map.put(modid, item);
-            }
+            if (item instanceof ItemSpellBook) books.add(item);
         }
 
         Item eb = Item.REGISTRY.getObject(new ResourceLocation("ebwizardry", "spell_book"));
-        if (eb instanceof ItemSpellBook) {
-            map.put("ebwizardry", eb);
-            defaultSpellBook = eb;
-        }
+        if (eb instanceof ItemSpellBook) defaultSpellBook = eb;
 
-        spellBookByMod = map;
+
+        allSpellBooks = books;
     }
 
     // Fallback-safe namespace extraction that works across mappings
@@ -654,9 +653,27 @@ public class TileSpellArchive extends TileEntity {
         buildSpellBookIndex();
 
         List<String> mods = new ArrayList<>();
-        if (spellBookByMod != null) mods.addAll(spellBookByMod.keySet());
+        if (allSpellBooks != null) {
+            for (Item book : allSpellBooks) {
+                ResourceLocation rl = book.getRegistryName();
+                if (rl != null) {
+                    String modid = getNamespaceSafe(rl);
+                    if (!mods.contains(modid)) mods.add(modid);
+                }
+            }
+        }
 
         return mods;
+    }
+
+    public Item getSpellBookForModPublic(Spell spell) {
+        buildSpellBookIndex();
+
+        for (Item book : allSpellBooks) {
+            if (spell.applicableForItem(book)) return book;
+        }
+
+        return defaultSpellBook;
     }
 
     // ---- GUI helpers (Wizardry-aware with graceful fallbacks) ----

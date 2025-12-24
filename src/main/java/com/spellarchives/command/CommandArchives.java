@@ -94,14 +94,6 @@ public class CommandArchives extends CommandBase {
         long totalBooksRequested = 0;
         long totalBooksAdded = 0;
 
-        // Build a cache of modid -> ItemSpellBook, preferring each mod's own spell book item when available.
-        Map<String, Item> spellBookByMod = buildSpellBookItemIndex();
-        Item defaultBook = spellBookByMod.get("ebwizardry");
-        if (defaultBook == null) {
-            SpellArchives.LOGGER.chatErrorTrans(sender, "chat.spellarchives.no_ebwizardry_book");
-            return;
-        }
-
         // Add typesCount random spells
         List<Spell> allSpells = Spell.getAllSpells();
         if (typesCount < allSpells.size()) {
@@ -115,10 +107,9 @@ public class CommandArchives extends CommandBase {
             Integer meta = spell.metadata();
             if (meta == -1) continue; // Not registered
 
-            // Choose the correct spell book item for the spell's owning mod, fallback to ebwizardry's
-            ResourceLocation spellId = spell.getRegistryName();
-            String modid = spellId != null ? getNamespaceSafe(spellId) : "ebwizardry";
-            Item spellBookItem = spellBookByMod.getOrDefault(modid, defaultBook);
+            // Choose the correct spell book item for the spell's owning mod
+            Item spellBookItem = tile.getSpellBookForModPublic(spell);
+            if (spellBookItem == null) continue;
 
             ItemStack book = new ItemStack(spellBookItem, 1, meta.intValue());
             totalBooksRequested += count;
@@ -129,7 +120,7 @@ public class CommandArchives extends CommandBase {
             }
         }
 
-    SpellArchives.LOGGER.chatSuccessTrans(sender, "chat.spellarchives.filled_summary", addedTypes, totalBooksAdded, totalBooksRequested);
+        SpellArchives.LOGGER.chatSuccessTrans(sender, "chat.spellarchives.filled_summary", addedTypes, totalBooksAdded, totalBooksRequested);
     }
 
     // Scans the item registry and builds a map from modid -> ItemSpellBook instance for that mod.

@@ -8,6 +8,10 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 - Semantic Versioning: https://semver.org/spec/v2.0.0.html
 
 
+## [0.5.4] - 2025-12-24
+### Fixed
+- Fix Spells being attributed the wrong book when a mod has multiple spell books (e.g., Ancient Spellcraft).
+
 ## [0.5.3] - 2025-12-01
 ### Fixed
 - Fix brittle state with some pipes when trying to insert spell books that are not already present in the archive.
